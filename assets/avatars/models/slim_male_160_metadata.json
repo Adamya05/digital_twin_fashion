@@ -1,0 +1,14 @@
+{
+    "id": "slim_male_160",
+    "name": "Slim Male 160cm",
+    "height": 160,
+    "bodyType": "Slim",
+    "gender": "Male",
+    "fileSize": 2048576,
+    "polyCount": 15000,
+    "qualityLevel": "High",
+    "textures": ["diffuse", "normal", "roughness", "metallic"],
+    "created": "2025-11-02T19:02:18+08:00",
+    "optimized": true,
+    "mobileOptimized": true
+}

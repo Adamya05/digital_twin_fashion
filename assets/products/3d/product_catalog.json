@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "generated_date": "2024-11-02T19:31:46Z",
+  "total_products": 15,
+  "total_models": 60,
+  "categories": {
+    "tops": {"products": 5, "models_per_product": 4},
+    "dresses": {"products": 3, "models_per_product": 4},
+    "bottoms": {"products": 5, "models_per_product": 4},
+    "outerwear": {"products": 4, "models_per_product": 4},
+    "activewear": {"products": 2, "models_per_product": 4}
+  },
+  "quality_levels": ["ultra", "high", "medium", "low"],
+  "file_formats": ["glb"],
+  "optimization": {
+    "compression": "KTX2",
+    "lod_levels": 3,
+    "vertex_compression": true
+  }
+}

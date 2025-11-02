@@ -1,0 +1,255 @@
+{
+    "version": "1.0",
+    "generated": "2025-11-02T19:02:20+08:00",
+    "totalAvatars": 14,
+    "avatars": [
+        {
+            "id": "slim_male_160",
+            "name": "Slim Male 160cm",
+            "modelFile": "models/slim_male_160_model.glb",
+            "thumbnailFile": "thumbnails/slim_male_160_thumb.png",
+            "height": 160,
+            "bodyType": "Slim",
+            "gender": "Male",
+            "category": "Slim_Male",
+            "tags": ["3d", "Slim", "Male", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "slim_female_162",
+            "name": "Slim Female 162cm",
+            "modelFile": "models/slim_female_162_model.glb",
+            "thumbnailFile": "thumbnails/slim_female_162_thumb.png",
+            "height": 162,
+            "bodyType": "Slim",
+            "gender": "Female",
+            "category": "Slim_Female",
+            "tags": ["3d", "Slim", "Female", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "regular_male_175",
+            "name": "Regular Male 175cm",
+            "modelFile": "models/regular_male_175_model.glb",
+            "thumbnailFile": "thumbnails/regular_male_175_thumb.png",
+            "height": 175,
+            "bodyType": "Regular",
+            "gender": "Male",
+            "category": "Regular_Male",
+            "tags": ["3d", "Regular", "Male", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "regular_female_168",
+            "name": "Regular Female 168cm",
+            "modelFile": "models/regular_female_168_model.glb",
+            "thumbnailFile": "thumbnails/regular_female_168_thumb.png",
+            "height": 168,
+            "bodyType": "Regular",
+            "gender": "Female",
+            "category": "Regular_Female",
+            "tags": ["3d", "Regular", "Female", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "athletic_male_180",
+            "name": "Athletic Male 180cm",
+            "modelFile": "models/athletic_male_180_model.glb",
+            "thumbnailFile": "thumbnails/athletic_male_180_thumb.png",
+            "height": 180,
+            "bodyType": "Athletic",
+            "gender": "Male",
+            "category": "Athletic_Male",
+            "tags": ["3d", "Athletic", "Male", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "athletic_female_170",
+            "name": "Athletic Female 170cm",
+            "modelFile": "models/athletic_female_170_model.glb",
+            "thumbnailFile": "thumbnails/athletic_female_170_thumb.png",
+            "height": 170,
+            "bodyType": "Athletic",
+            "gender": "Female",
+            "category": "Athletic_Female",
+            "tags": ["3d", "Athletic", "Female", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "plussize_male_172",
+            "name": "Plus Size Male 172cm",
+            "modelFile": "models/plussize_male_172_model.glb",
+            "thumbnailFile": "thumbnails/plussize_male_172_thumb.png",
+            "height": 172,
+            "bodyType": "PlusSize",
+            "gender": "Male",
+            "category": "PlusSize_Male",
+            "tags": ["3d", "PlusSize", "Male", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "plussize_female_165",
+            "name": "Plus Size Female 165cm",
+            "modelFile": "models/plussize_female_165_model.glb",
+            "thumbnailFile": "thumbnails/plussize_female_165_thumb.png",
+            "height": 165,
+            "bodyType": "PlusSize",
+            "gender": "Female",
+            "category": "PlusSize_Female",
+            "tags": ["3d", "PlusSize", "Female", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "tall_male_185",
+            "name": "Tall Male 185cm",
+            "modelFile": "models/tall_male_185_model.glb",
+            "thumbnailFile": "thumbnails/tall_male_185_thumb.png",
+            "height": 185,
+            "bodyType": "Regular",
+            "gender": "Male",
+            "category": "Regular_Male",
+            "tags": ["3d", "Regular", "Male", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "tall_female_178",
+            "name": "Tall Female 178cm",
+            "modelFile": "models/tall_female_178_model.glb",
+            "thumbnailFile": "thumbnails/tall_female_178_thumb.png",
+            "height": 178,
+            "bodyType": "Regular",
+            "gender": "Female",
+            "category": "Regular_Female",
+            "tags": ["3d", "Regular", "Female", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "petite_male_155",
+            "name": "Petite Male 155cm",
+            "modelFile": "models/petite_male_155_model.glb",
+            "thumbnailFile": "thumbnails/petite_male_155_thumb.png",
+            "height": 155,
+            "bodyType": "Slim",
+            "gender": "Male",
+            "category": "Slim_Male",
+            "tags": ["3d", "Slim", "Male", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "petite_female_152",
+            "name": "Petite Female 152cm",
+            "modelFile": "models/petite_female_152_model.glb",
+            "thumbnailFile": "thumbnails/petite_female_152_thumb.png",
+            "height": 152,
+            "bodyType": "Slim",
+            "gender": "Female",
+            "category": "Slim_Female",
+            "tags": ["3d", "Slim", "Female", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "muscular_male_178",
+            "name": "Muscular Male 178cm",
+            "modelFile": "models/muscular_male_178_model.glb",
+            "thumbnailFile": "thumbnails/muscular_male_178_thumb.png",
+            "height": 178,
+            "bodyType": "Athletic",
+            "gender": "Male",
+            "category": "Athletic_Male",
+            "tags": ["3d", "Athletic", "Male", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+,
+        {
+            "id": "muscular_female_172",
+            "name": "Muscular Female 172cm",
+            "modelFile": "models/muscular_female_172_model.glb",
+            "thumbnailFile": "thumbnails/muscular_female_172_thumb.png",
+            "height": 172,
+            "bodyType": "Athletic",
+            "gender": "Female",
+            "category": "Athletic_Female",
+            "tags": ["3d", "Athletic", "Female", "mobile-optimized"],
+            "quality": "high",
+            "mobileOptimized": true,
+            "textureFormats": ["png", "jpg"]
+        }
+    ],
+    "fallbackModels": [
+        {
+            "id": "placeholder_slim",
+            "name": "Slim Placeholder",
+            "file": "fallbacks/placeholder_slim.glb",
+            "bodyType": "Slim",
+            "description": "Generic slim body type placeholder"
+        },
+        {
+            "id": "placeholder_regular", 
+            "name": "Regular Placeholder",
+            "file": "fallbacks/placeholder_regular.glb",
+            "bodyType": "Regular",
+            "description": "Generic regular body type placeholder"
+        },
+        {
+            "id": "placeholder_athletic",
+            "name": "Athletic Placeholder", 
+            "file": "fallbacks/placeholder_athletic.glb",
+            "bodyType": "Athletic",
+            "description": "Generic athletic body type placeholder"
+        },
+        {
+            "id": "placeholder_plussize",
+            "name": "Plus Size Placeholder",
+            "file": "fallbacks/placeholder_plussize.glb", 
+            "bodyType": "PlusSize",
+            "description": "Generic plus size body type placeholder"
+        }
+    ],
+    "metadata": {
+        "totalModels": 14,
+        "totalFallbacks": 4,
+        "supportedFormats": ["glb", "gltf"],
+        "textureFormats": ["png", "jpg"],
+        "maxFileSize": "50MB",
+        "recommendedCacheSize": "500MB",
+        "mobileOptimized": true
+    }
+}

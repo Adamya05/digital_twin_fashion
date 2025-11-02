@@ -1,0 +1,92 @@
+{
+  "id": "dress_women_casual_blue",
+  "name": "Casual Blue Summer Dress",
+  "category": "dresses",
+  "gender": "women",
+  "subcategory": "casual",
+  "description": "A flowing, comfortable summer dress perfect for warm weather and casual outings.",
+  "brand": "SummerStyle",
+  "price": 49.99,
+  "available_colors": ["blue", "white", "pink", "yellow"],
+  "available_sizes": ["XS", "S", "M", "L", "XL"],
+  "size_chart": {
+    "XS": {"bust": 82, "waist": 64, "hips": 88, "length": 92, "shoulders": 35},
+    "S": {"bust": 86, "waist": 68, "hips": 92, "length": 94, "shoulders": 36},
+    "M": {"bust": 90, "waist": 72, "hips": 96, "length": 96, "shoulders": 38},
+    "L": {"bust": 96, "waist": 78, "hips": 102, "length": 98, "shoulders": 40},
+    "XL": {"bust": 102, "waist": 84, "hops": 108, "length": 100, "shoulders": 42}
+  },
+  "materials": [
+    {"material": "Cotton Blend", "percentage": 60, "care": "Machine wash gentle"},
+    {"material": "Polyester", "percentage": 40, "care": "Tumble dry low"}
+  ],
+  "care_instructions": [
+    "Machine wash gentle cycle",
+    "Tumble dry low heat",
+    "Iron on low heat if needed",
+    "Do not bleach"
+  ],
+  "recommended_occasions": [
+    "Casual outings",
+    "Summer activities",
+    "Vacation wear",
+    "Brunch dates"
+  ],
+  "model_compatibility": {
+    "avatar_types": ["regular_female", "athletic_female", "tall_female", "petite_female", "plussize_female"],
+    "size_recommendations": {
+      "petite_female": "XS or S",
+      "regular_female": "M",
+      "athletic_female": "L",
+      "plussize_female": "L or XL"
+    }
+  },
+  "3d_model": {
+    "polygon_count": 52000,
+    "texture_resolution": "2K",
+    "animation_support": true,
+    "file_formats": ["glb"],
+    "optimizations": {
+      "lod_levels": 4,
+      "texture_compression": "KTX2",
+      "vertex_compression": true,
+      "cloth_simulation": true
+    }
+  },
+  "fabric_properties": {
+    "stiffness": 0.3,
+    "stretch_factor": 1.2,
+    "wrinkle_resistance": 0.5,
+    "breathability": 0.9,
+    "durability": 0.7,
+    "drape_factor": 0.8
+  },
+  "rendering_properties": {
+    "preferred_quality": "high",
+    "physics_simulation": true,
+    "collision_detection": true,
+    "lighting_sensitivity": "high",
+    "wind_response": true
+  },
+  "fit_analysis": {
+    "comfort_score": 0.95,
+    "appearance_score": 0.92,
+    "mobility_score": 0.85,
+    "realism_score": 0.9
+  },
+  "compatibility_notes": "Excellent flowing fit that adapts well to different body shapes. Soft fabric provides natural drape.",
+  "size_mb": 1.8,
+  "vertices": 52000,
+  "submeshes": 8,
+  "animations": ["idle", "walking", "sitting", "twirling"],
+  "tags": ["casual", "summer", "flowing", "comfortable", "cotton blend"],
+  "created_date": "2024-02-20",
+  "version": "1.1",
+  "thumbnail_url": "assets/products/3d/thumbnails/dress_women_casual_blue_thumb.png",
+  "special_features": {
+    "clothing_simulation": true,
+    "wind_interaction": true,
+    "sunlight_response": true,
+    "breathability_simulation": true
+  }
+}

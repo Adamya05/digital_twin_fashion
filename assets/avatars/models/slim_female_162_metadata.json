@@ -1,0 +1,14 @@
+{
+    "id": "slim_female_162",
+    "name": "Slim Female 162cm",
+    "height": 162,
+    "bodyType": "Slim",
+    "gender": "Female",
+    "fileSize": 2048576,
+    "polyCount": 15000,
+    "qualityLevel": "High",
+    "textures": ["diffuse", "normal", "roughness", "metallic"],
+    "created": "2025-11-02T19:02:18+08:00",
+    "optimized": true,
+    "mobileOptimized": true
+}

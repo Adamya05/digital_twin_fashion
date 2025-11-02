@@ -1,0 +1,200 @@
+name: Android Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+        - debug
+        - profile
+        - release
+      upload_to_play:
+        description: 'Upload to Google Play'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: '3.16.0'
+  ANDROID_COMPILE_SDK: '34'
+  ANDROID_TARGET_SDK: '34'
+  ANDROID_BUILD_TOOLS: '34.0.0'
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+
+    - name: Get dependencies
+      run: flutter pub get
+
+    - name: Analyze code
+      run: flutter analyze --no-fatal-infos
+
+    - name: Run tests
+      run: flutter test
+
+    - name: Check formatting
+      run: flutter format --set-exit-if-changed .
+
+  build-android:
+    name: Build Android
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
+
+    - name: Setup signing keys
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      env:
+        KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      run: |
+        echo "$KEYSTORE_FILE" | base64 -d > android/app/upload-keystore.jks
+        cat > android/keystore.properties << EOF
+        MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks
+        MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD
+        MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS
+        MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD
+        EOF
+
+    - name: Build release APK
+      run: |
+        flutter build apk --release
+
+    - name: Build App Bundle
+      run: |
+        flutter build appbundle --release
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+
+    - name: Upload AAB artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-aab
+        path: build/app/outputs/bundle/release/app-release.aab
+
+    - name: Generate build info
+      run: |
+        BUILD_TIME=$(date "+%Y-%m-%d %H:%M:%S")
+        GIT_COMMIT=$(git rev-parse --short HEAD)
+        BUILD_NUMBER=${{ github.run_number }}
+        
+        cat > build-info.json << EOF
+        {
+          "app_name": "Digital Twin Fashion",
+          "build_time": "$BUILD_TIME",
+          "git_commit": "$GIT_COMMIT",
+          "build_number": "$BUILD_NUMBER",
+          "version_name": "${{ github.ref_name }}",
+          "flutter_version": "$(flutter --version | head -1)",
+          "build_type": "release",
+          "workflow_run": "${{ github.run_id }}"
+        }
+        EOF
+
+    - name: Upload build info artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-info
+        path: build-info.json
+
+  upload-to-play-store:
+    name: Upload to Play Store
+    needs: build-android
+    if: ${{ github.event.inputs.upload_to_play == 'true' || github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Download AAB artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: app-release-aab
+        path: app-release.aab
+
+    - name: Install Python dependencies
+      run: |
+        pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
+    - name: Upload to Google Play
+      env:
+        PLAY_CONSOLE_SERVICE_ACCOUNT: ${{ secrets.PLAY_CONSOLE_SERVICE_ACCOUNT }}
+        PLAY_CONSOLE_PACKAGE_NAME: com.example.digital_twin_fashion
+      run: |
+        echo "$PLAY_CONSOLE_SERVICE_ACCOUNT" > service-account.json
+        python scripts/upload_to_play_store.py
+
+  notify:
+    name: Notify
+    needs: [analyze-and-test, build-android]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Notify success
+      if: needs.analyze-and-test.result == 'success' && needs.build-android.result == 'success'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: "✅ Android release build completed successfully!"
+
+    - name: Notify failure
+      if: needs.analyze-and-test.result == 'failure' || needs.build-android.result == 'failure'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: "❌ Android release build failed. Check the logs for details."

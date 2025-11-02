@@ -1,0 +1,9 @@
+{
+    "originalFile": "/workspace/digital_twin_fashion/assets/avatars/models/plussize_male_172_model.glb",
+    "compressedFile": "/workspace/digital_twin_fashion/assets/avatars/compressed/plussize_male_172_model_compressed.glb",
+    "compressionRatio": 0.75,
+    "originalSize": 2048576,
+    "compressedSize": 1536432,
+    "compressionType": "gzip",
+    "qualityLevel": "medium"
+}

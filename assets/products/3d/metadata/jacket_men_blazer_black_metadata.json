@@ -1,0 +1,100 @@
+{
+  "id": "jacket_men_blazer_black",
+  "name": "Formal Black Blazer",
+  "category": "outerwear",
+  "gender": "men",
+  "subcategory": "formal",
+  "description": "Classic black blazer perfect for business and formal occasions.",
+  "brand": "Professional",
+  "price": 129.99,
+  "available_colors": ["black", "navy", "charcoal", "brown"],
+  "available_sizes": ["S", "M", "L", "XL", "XXL"],
+  "size_chart": {
+    "S": {"chest": 96, "waist": 86, "shoulders": 46, "sleeve": 62, "length": 72},
+    "M": {"chest": 102, "waist": 92, "shoulders": 48, "sleeve": 64, "length": 74},
+    "L": {"chest": 110, "waist": 98, "shoulders": 52, "sleeve": 66, "length": 76},
+    "XL": {"chest": 118, "waist": 106, "shoulders": 56, "sleeve": 68, "length": 78},
+    "XXL": {"chest": 126, "waist": 114, "shoulders": 60, "sleeve": 70, "length": 80}
+  },
+  "materials": [
+    {"material": "Wool Blend", "percentage": 70, "care": "Dry clean recommended"},
+    {"material": "Polyester", "percentage": 25, "care": "Machine washable"},
+    {"material": "Spandex", "percentage": 5, "care": "Low heat iron"}
+  ],
+  "care_instructions": [
+    "Dry clean preferred",
+    "If machine washing, use cold water",
+    "Tumble dry low or hang dry",
+    "Iron on low heat with pressing cloth",
+    "Store on padded hanger"
+  ],
+  "recommended_occasions": [
+    "Business meetings",
+    "Formal events",
+    "Professional gatherings",
+    "Weddings",
+    "Job interviews"
+  ],
+  "model_compatibility": {
+    "avatar_types": ["regular_male", "athletic_male", "muscular_male", "tall_male"],
+    "size_recommendations": {
+      "regular_male": "M",
+      "athletic_male": "L",
+      "muscular_male": "L or XL",
+      "tall_male": "L or XL",
+      "slim_male": "S or M"
+    }
+  },
+  "3d_model": {
+    "polygon_count": 45000,
+    "texture_resolution": "4K",
+    "animation_support": true,
+    "file_formats": ["glb"],
+    "optimizations": {
+      "lod_levels": 4,
+      "texture_compression": "KTX2",
+      "vertex_compression": true,
+      "fabric_physics": true
+    }
+  },
+  "fabric_properties": {
+    "stiffness": 0.9,
+    "stretch_factor": 1.05,
+    "wrinkle_resistance": 0.85,
+    "breathability": 0.4,
+    "durability": 0.95,
+    "structure_retention": 0.9,
+    "drape_quality": 0.85
+  },
+  "rendering_properties": {
+    "preferred_quality": "ultra",
+    "physics_simulation": true,
+    "collision_detection": true,
+    "lighting_sensitivity": "high",
+    "fabric_physics": true,
+    "detail_emphasis": true
+  },
+  "fit_analysis": {
+    "comfort_score": 0.75,
+    "appearance_score": 0.95,
+    "mobility_score": 0.6,
+    "realism_score": 0.93
+  },
+  "compatibility_notes": "Structured fit perfect for formal occasions. Requires precise sizing for optimal appearance.",
+  "size_mb": 2.1,
+  "vertices": 45000,
+  "submeshes": 12,
+  "animations": ["idle", "walking", "sitting", "hand_gestures"],
+  "tags": ["formal", "business", "structured", "wool", "professional"],
+  "created_date": "2024-01-30",
+  "version": "2.0",
+  "thumbnail_url": "assets/products/3d/thumbnails/jacket_men_blazer_black_thumb.png",
+  "special_features": {
+    "fabric_structure": true,
+    "crease_resistance": true,
+    "professional_draping": true,
+    "detail_rendering": true,
+    "lighting_response": true
+  },
+  "quality_notes": "Premium quality blazer with detailed stitching and fabric texture. Best rendered with high-quality settings."
+}

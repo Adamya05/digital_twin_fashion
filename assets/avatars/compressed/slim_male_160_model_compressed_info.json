@@ -1,0 +1,9 @@
+{
+    "originalFile": "/workspace/digital_twin_fashion/assets/avatars/models/slim_male_160_model.glb",
+    "compressedFile": "/workspace/digital_twin_fashion/assets/avatars/compressed/slim_male_160_model_compressed.glb",
+    "compressionRatio": 0.75,
+    "originalSize": 2048576,
+    "compressedSize": 1536432,
+    "compressionType": "gzip",
+    "qualityLevel": "medium"
+}

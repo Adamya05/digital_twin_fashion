@@ -1,0 +1,9 @@
+{
+    "originalFile": "/workspace/digital_twin_fashion/assets/avatars/models/athletic_male_180_model.glb",
+    "compressedFile": "/workspace/digital_twin_fashion/assets/avatars/compressed/athletic_male_180_model_compressed.glb",
+    "compressionRatio": 0.75,
+    "originalSize": 2048576,
+    "compressedSize": 1536432,
+    "compressionType": "gzip",
+    "qualityLevel": "medium"
+}

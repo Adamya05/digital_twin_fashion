@@ -1,0 +1,14 @@
+{
+    "id": "plussize_female_165",
+    "name": "Plus Size Female 165cm",
+    "height": 165,
+    "bodyType": "PlusSize",
+    "gender": "Female",
+    "fileSize": 2048576,
+    "polyCount": 15000,
+    "qualityLevel": "High",
+    "textures": ["diffuse", "normal", "roughness", "metallic"],
+    "created": "2025-11-02T19:02:19+08:00",
+    "optimized": true,
+    "mobileOptimized": true
+}

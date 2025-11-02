@@ -1,0 +1,14 @@
+{
+    "id": "athletic_male_180",
+    "name": "Athletic Male 180cm",
+    "height": 180,
+    "bodyType": "Athletic",
+    "gender": "Male",
+    "fileSize": 2048576,
+    "polyCount": 15000,
+    "qualityLevel": "High",
+    "textures": ["diffuse", "normal", "roughness", "metallic"],
+    "created": "2025-11-02T19:02:18+08:00",
+    "optimized": true,
+    "mobileOptimized": true
+}

@@ -1,0 +1,85 @@
+{
+  "id": "jeans_men_classic_blue",
+  "name": "Classic Blue Jeans",
+  "category": "pants",
+  "gender": "men",
+  "subcategory": "casual",
+  "description": "Timeless blue denim jeans perfect for everyday wear.",
+  "brand": "DenimCo",
+  "price": 79.99,
+  "available_colors": ["blue", "black", "light_blue", "dark_blue"],
+  "available_sizes": ["28", "30", "32", "34", "36", "38"],
+  "size_chart": {
+    "28": {"waist": 71, "hips": 88, "inseam": 78, "thigh": 54},
+    "30": {"waist": 76, "hips": 92, "inseam": 78, "thigh": 56},
+    "32": {"waist": 81, "hips": 96, "inseam": 78, "thigh": 58},
+    "34": {"waist": 86, "hips": 100, "inseam": 78, "thigh": 60},
+    "36": {"waist": 91, "hips": 104, "inseam": 78, "thigh": 62},
+    "38": {"waist": 96, "hops": 108, "inseam": 78, "thigh": 64}
+  },
+  "materials": [
+    {"material": "Cotton", "percentage": 98, "care": "Machine wash cold"},
+    {"material": "Elastane", "percentage": 2, "care": "Tumble dry low"}
+  ],
+  "care_instructions": [
+    "Machine wash cold with like colors",
+    "Tumble dry low heat",
+    "Iron on low heat if needed",
+    "Do not bleach"
+  ],
+  "recommended_occasions": [
+    "Casual everyday wear",
+    "Weekend activities",
+    "Casual dining",
+    "Shopping trips"
+  ],
+  "model_compatibility": {
+    "avatar_types": ["regular_male", "athletic_male", "muscular_male", "tall_male", "slim_male"],
+    "size_recommendations": {
+      "slim_male": "30 or 32",
+      "regular_male": "32 or 34",
+      "athletic_male": "34 or 36",
+      "muscular_male": "34 or 36",
+      "tall_male": "32 or 34"
+    }
+  },
+  "3d_model": {
+    "polygon_count": 40000,
+    "texture_resolution": "2K",
+    "animation_support": true,
+    "file_formats": ["glb"],
+    "optimizations": {
+      "lod_levels": 3,
+      "texture_compression": "KTX2",
+      "vertex_compression": true
+    }
+  },
+  "fabric_properties": {
+    "stiffness": 0.7,
+    "stretch_factor": 1.1,
+    "wrinkle_resistance": 0.8,
+    "breathability": 0.6,
+    "durability": 0.9
+  },
+  "rendering_properties": {
+    "preferred_quality": "high",
+    "physics_simulation": true,
+    "collision_detection": true,
+    "lighting_sensitivity": "medium"
+  },
+  "fit_analysis": {
+    "comfort_score": 0.88,
+    "appearance_score": 0.9,
+    "mobility_score": 0.85,
+    "realism_score": 0.87
+  },
+  "compatibility_notes": "Classic fit that works well with most body types. Slight stretch for comfort and mobility.",
+  "size_mb": 1.3,
+  "vertices": 40000,
+  "submeshes": 6,
+  "animations": ["idle", "walking", "sitting", "crouching"],
+  "tags": ["denim", "casual", "classic", "versatile", "comfortable"],
+  "created_date": "2024-02-10",
+  "version": "1.4",
+  "thumbnail_url": "assets/products/3d/thumbnails/jeans_men_classic_blue_thumb.png"
+}

@@ -1,0 +1,96 @@
+{
+  "id": "sports_bra_women_black",
+  "name": "High-Impact Sports Bra",
+  "category": "activewear",
+  "gender": "women",
+  "subcategory": "athletic",
+  "description": "High-impact sports bra designed for intense workouts and active lifestyles.",
+  "brand": "ActiveFit",
+  "price": 35.99,
+  "available_colors": ["black", "navy", "gray", "pink"],
+  "available_sizes": ["XS", "S", "M", "L", "XL"],
+  "size_chart": {
+    "XS": {"bust": 78, "band_width": 28, "support_level": 3},
+    "S": {"bust": 82, "band_width": 30, "support_level": 3},
+    "M": {"bust": 86, "band_width": 32, "support_level": 3},
+    "L": {"bust": 92, "band_width": 34, "support_level": 3},
+    "XL": {"bust": 98, "band_width": 36, "support_level": 3}
+  },
+  "materials": [
+    {"material": "Nylon", "percentage": 75, "care": "Machine wash cold"},
+    {"material": "Spandex", "percentage": 25, "care": "Air dry recommended"}
+  ],
+  "care_instructions": [
+    "Machine wash cold",
+    "Air dry to maintain elasticity",
+    "Do not bleach",
+    "Do not iron"
+  ],
+  "recommended_occasions": [
+    "Gym workouts",
+    "Running",
+    "Yoga",
+    "High-intensity training",
+    "Sports activities"
+  ],
+  "model_compatibility": {
+    "avatar_types": ["regular_female", "athletic_female", "muscular_female", "tall_female", "slim_female"],
+    "size_recommendations": {
+      "regular_female": "M",
+      "athletic_female": "L",
+      "muscular_female": "L",
+      "slim_female": "S",
+      "plussize_female": "XL"
+    }
+  },
+  "3d_model": {
+    "polygon_count": 18000,
+    "texture_resolution": "1K",
+    "animation_support": true,
+    "file_formats": ["glb"],
+    "optimizations": {
+      "lod_levels": 3,
+      "texture_compression": "KTX2",
+      "vertex_compression": true,
+      "compression_optimized": true
+    }
+  },
+  "fabric_properties": {
+    "stiffness": 0.8,
+    "stretch_factor": 1.6,
+    "wrinkle_resistance": 1.0,
+    "breathability": 0.7,
+    "durability": 0.95,
+    "moisture_wicking": 0.9,
+    "support_factor": 0.9
+  },
+  "rendering_properties": {
+    "preferred_quality": "medium",
+    "physics_simulation": true,
+    "collision_detection": false,
+    "lighting_sensitivity": "low",
+    "movement_response": "high"
+  },
+  "fit_analysis": {
+    "comfort_score": 0.85,
+    "appearance_score": 0.8,
+    "mobility_score": 0.95,
+    "realism_score": 0.92
+  },
+  "compatibility_notes": "Designed for high support during intense activities. Excellent fit for athletic body types.",
+  "size_mb": 0.8,
+  "vertices": 18000,
+  "submeshes": 3,
+  "animations": ["idle", "running", "jumping", "stretching"],
+  "tags": ["athletic", "high-impact", "support", "moisture-wicking", "stretch"],
+  "created_date": "2024-03-10",
+  "version": "1.3",
+  "thumbnail_url": "assets/products/3d/thumbnails/sports_bra_women_black_thumb.png",
+  "special_features": {
+    "compression_simulation": true,
+    "movement_support": true,
+    "moisture_response": true,
+    "elastic_recovery": true,
+    "breathability_zones": true
+  }
+}

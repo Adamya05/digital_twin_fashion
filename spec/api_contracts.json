@@ -1,0 +1,3915 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Virtual Try-On API",
+    "description": "Comprehensive API specification for the Virtual Try-On application supporting avatar scanning, 3D product try-on, e-commerce, and user management",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "api-support@tryon.com",
+      "url": "https://docs.tryon.com/support"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.tryon.com/v1",
+      "description": "Production server"
+    },
+    {
+      "url": "https://staging-api.tryon.com/v1",
+      "description": "Staging server"
+    },
+    {
+      "url": "https://dev-api.tryon.com/v1",
+      "description": "Development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "authentication",
+      "description": "User authentication and session management"
+    },
+    {
+      "name": "scan",
+      "description": "Avatar scanning and generation"
+    },
+    {
+      "name": "avatar",
+      "description": "Avatar management and retrieval"
+    },
+    {
+      "name": "products",
+      "description": "Product catalog and search"
+    },
+    {
+      "name": "tryon",
+      "description": "3D try-on rendering and processing"
+    },
+    {
+      "name": "cart",
+      "description": "Shopping cart management"
+    },
+    {
+      "name": "orders",
+      "description": "Order management and tracking"
+    },
+    {
+      "name": "profile",
+      "description": "User profile and preferences"
+    },
+    {
+      "name": "closet",
+      "description": "User's virtual closet"
+    },
+    {
+      "name": "payment",
+      "description": "Payment processing and verification"
+    }
+  ],
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": ["authentication"],
+        "summary": "User login",
+        "description": "Authenticate user with email/password and return access token",
+        "operationId": "userLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "examples": {
+                "basic_login": {
+                  "summary": "Basic email/password login",
+                  "value": {
+                    "email": "user@example.com",
+                    "password": "securePassword123"
+                  }
+                },
+                "social_login": {
+                  "summary": "Social login with provider",
+                  "value": {
+                    "provider": "google",
+                    "providerToken": "eyJhbGciOiJIUzI1NiIs..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "headers": {
+              "Set-Cookie": {
+                "description": "HTTP-only refresh token cookie",
+                "schema": {
+                  "type": "string",
+                  "example": "refresh_token=abc123; HttpOnly; Secure; SameSite=Strict; Max-Age=604800"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "user": {
+                          "id": "usr_123456789",
+                          "email": "user@example.com",
+                          "firstName": "John",
+                          "lastName": "Doe",
+                          "avatar": "https://cdn.tryon.com/avatars/usr_123456789.jpg",
+                          "emailVerified": true,
+                          "createdAt": "2025-01-15T10:30:00Z"
+                        },
+                        "tokens": {
+                          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                          "accessTokenExpires": "2025-01-15T11:30:00Z",
+                          "refreshToken": "refresh_token_abc123",
+                          "refreshTokenExpires": "2025-01-22T10:30:00Z"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "INVALID_CREDENTIALS",
+                    "message": "Invalid email or password",
+                    "details": {
+                      "field": "email",
+                      "reason": "Email or password is incorrect"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitError"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["authentication"],
+        "summary": "User registration",
+        "description": "Register a new user account with email verification",
+        "operationId": "userRegistration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "examples": {
+                "basic_register": {
+                  "value": {
+                    "email": "newuser@example.com",
+                    "password": "SecurePass123!",
+                    "firstName": "Jane",
+                    "lastName": "Smith",
+                    "dateOfBirth": "1995-08-15",
+                    "agreeToTerms": true,
+                    "marketingConsent": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": ["authentication"],
+        "summary": "Refresh access token",
+        "description": "Refresh expired access token using refresh token",
+        "operationId": "refreshToken",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired refresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan": {
+      "post": {
+        "tags": ["scan"],
+        "summary": "Start avatar scanning",
+        "description": "Initiate 3D avatar scanning process using device camera",
+        "operationId": "startAvatarScan",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanRequest"
+              },
+              "examples": {
+                "photo_scan": {
+                  "value": {
+                    "scanType": "photo_based",
+                    "images": [
+                      {
+                        "url": "https://storage.tryon.com/scans/tmp_1.jpg",
+                        "pose": "front",
+                        "quality": 0.95
+                      },
+                      {
+                        "url": "https://storage.tryon.com/scans/tmp_2.jpg",
+                        "pose": "side",
+                        "quality": 0.92
+                      },
+                      {
+                        "url": "https://storage.tryon.com/scans/tmp_3.jpg",
+                        "pose": "back",
+                        "quality": 0.88
+                      }
+                    ],
+                    "userPreferences": {
+                      "bodyType": "athletic",
+                      "height": 175,
+                      "weight": 70,
+                      "preferences": ["casual", "business"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Scan initiated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResponse"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "scanId": "scan_789xyz123",
+                        "status": "processing",
+                        "estimatedTimeMinutes": 5,
+                        "queuePosition": 3,
+                        "createdAt": "2025-01-15T10:30:00Z",
+                        "webhookUrl": "https://app.tryon.com/webhooks/scan-complete"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scan request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded - too many scan requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan/{id}/status": {
+      "get": {
+        "tags": ["scan"],
+        "summary": "Get scan status",
+        "description": "Retrieve the status and progress of an avatar scanning operation",
+        "operationId": "getScanStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique scan identifier",
+            "schema": {
+              "type": "string",
+              "pattern": "^scan_[a-zA-Z0-9]{10,}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scan status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanStatusResponse"
+                },
+                "examples": {
+                  "processing": {
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "scanId": "scan_789xyz123",
+                        "status": "processing",
+                        "progress": 65,
+                        "stage": "mesh_generation",
+                        "estimatedTimeRemaining": 120,
+                        "messages": [
+                          "Analyzing input images...",
+                          "Generating 3D mesh...",
+                          "Applying texture mapping..."
+                        ]
+                      }
+                    }
+                  },
+                  "completed": {
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "scanId": "scan_789xyz123",
+                        "status": "completed",
+                        "progress": 100,
+                        "avatarId": "avatar_abc456def",
+                        "qualityScore": 0.94,
+                        "processingTime": 245,
+                        "completedAt": "2025-01-15T10:35:00Z"
+                      }
+                    }
+                  },
+                  "failed": {
+                    "value": {
+                      "success": false,
+                      "data": {
+                        "scanId": "scan_789xyz123",
+                        "status": "failed",
+                        "progress": 0,
+                        "error": {
+                          "code": "INSUFFICIENT_IMAGE_QUALITY",
+                          "message": "Input images do not meet quality requirements",
+                          "details": {
+                            "issues": ["Image blur detected", "Insufficient lighting"],
+                            "recommendation": "Please retake photos in better lighting"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Scan not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/avatar/{id}": {
+      "get": {
+        "tags": ["avatar"],
+        "summary": "Get avatar data",
+        "description": "Retrieve complete avatar data including 3D model and metadata",
+        "operationId": "getAvatar",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique avatar identifier",
+            "schema": {
+              "type": "string",
+              "pattern": "^avatar_[a-zA-Z0-9]{10,}$"
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "description": "Additional data to include in response",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["measurements", "preferences", "usage_stats"]
+              }
+            },
+            "style": "form",
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Avatar data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvatarResponse"
+                },
+                "examples": {
+                  "basic": {
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "avatar_abc456def",
+                        "name": "My Avatar",
+                        "status": "active",
+                        "model": {
+                          "url": "https://cdn.tryon.com/models/avatar_abc456def.glb",
+                          "format": "glb",
+                          "size": "12.4MB",
+                          "polycount": 15420,
+                          "textures": ["diffuse", "normal", "roughness"]
+                        },
+                        "preview": {
+                          "thumbnail": "https://cdn.tryon.com/previews/avatar_abc456def_thumb.jpg",
+                          "fullSize": "https://cdn.tryon.com/previews/avatar_abc456def_full.jpg"
+                        },
+                        "createdAt": "2025-01-15T10:35:00Z",
+                        "updatedAt": "2025-01-15T10:35:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Avatar not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "tags": ["products"],
+        "summary": "Get products catalog",
+        "description": "Retrieve paginated list of products with filtering and sorting",
+        "operationId": "getProducts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for pagination",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "example": 1
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "example": 20
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by product category",
+            "schema": {
+              "type": "string",
+              "enum": ["tops", "bottoms", "dresses", "outerwear", "shoes", "accessories", "activewear", "formal"]
+            },
+            "example": "tops"
+          },
+          {
+            "name": "subcategory",
+            "in": "query",
+            "description": "Filter by subcategory",
+            "schema": {
+              "type": "string",
+              "examples": ["shirts", "pants", "jackets", "sneakers", "hats"]
+            }
+          },
+          {
+            "name": "brand",
+            "in": "query",
+            "description": "Filter by brand name",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Nike"
+          },
+          {
+            "name": "priceMin",
+            "in": "query",
+            "description": "Minimum price filter",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            },
+            "example": 29.99
+          },
+          {
+            "name": "priceMax",
+            "in": "query",
+            "description": "Maximum price filter",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            },
+            "example": 199.99
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Filter by available sizes",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["XS", "S", "M", "L", "XL", "XXL", "6", "7", "8", "9", "10", "11", "12"]
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "color",
+            "in": "query",
+            "description": "Filter by available colors",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "availability",
+            "in": "query",
+            "description": "Filter by product availability",
+            "schema": {
+              "type": "string",
+              "enum": ["in_stock", "out_of_stock", "pre_order"],
+              "default": "in_stock"
+            },
+            "example": "in_stock"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "Sort results by field",
+            "schema": {
+              "type": "string",
+              "enum": ["name", "price_asc", "price_desc", "rating", "newest", "popularity"],
+              "default": "popularity"
+            },
+            "example": "popularity"
+          },
+          {
+            "name": "tryonAvailable",
+            "in": "query",
+            "description": "Only show products available for virtual try-on",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "example": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Products retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListResponse"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "products": [
+                          {
+                            "id": "prod_123abc456",
+                            "name": "Premium Cotton T-Shirt",
+                            "description": "High-quality cotton blend t-shirt with modern fit",
+                            "price": 49.99,
+                            "originalPrice": 69.99,
+                            "currency": "USD",
+                            "brand": "FashionBrand",
+                            "category": "tops",
+                            "subcategory": "shirts",
+                            "images": [
+                              {
+                                "url": "https://cdn.tryon.com/products/prod_123abc456_front.jpg",
+                                "type": "front",
+                                "resolution": "high"
+                              },
+                              {
+                                "url": "https://cdn.tryon.com/products/prod_123abc456_back.jpg",
+                                "type": "back",
+                                "resolution": "high"
+                              }
+                            ],
+                            "model3D": {
+                              "url": "https://cdn.tryon.com/models/prod_123abc456.glb",
+                              "format": "glb",
+                              "size": "8.2MB",
+                              "polycount": 8450
+                            },
+                            "variants": [
+                              {
+                                "id": "var_123_001",
+                                "size": "M",
+                                "color": "blue",
+                                "colorHex": "#2563EB",
+                                "stock": 25,
+                                "sku": "TSH-001-M-BLU"
+                              },
+                              {
+                                "id": "var_123_002",
+                                "size": "L",
+                                "color": "blue",
+                                "colorHex": "#2563EB",
+                                "stock": 18,
+                                "sku": "TSH-001-L-BLU"
+                              }
+                            ],
+                            "rating": {
+                              "average": 4.3,
+                              "count": 127
+                            },
+                            "tryonAvailable": true,
+                            "createdAt": "2025-01-10T12:00:00Z",
+                            "updatedAt": "2025-01-14T16:30:00Z"
+                          }
+                        ],
+                        "pagination": {
+                          "currentPage": 1,
+                          "totalPages": 25,
+                          "totalItems": 487,
+                          "itemsPerPage": 20,
+                          "hasNext": true,
+                          "hasPrevious": false
+                        },
+                        "facets": {
+                          "categories": {
+                            "tops": 156,
+                            "bottoms": 98,
+                            "dresses": 67,
+                            "outerwear": 45
+                          },
+                          "brands": {
+                            "FashionBrand": 123,
+                            "TrendStyle": 89,
+                            "ClassicWear": 67
+                          },
+                          "priceRange": {
+                            "min": 19.99,
+                            "max": 299.99
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "tags": ["products"],
+        "summary": "Get product details",
+        "description": "Retrieve detailed information about a specific product",
+        "operationId": "getProductDetails",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique product identifier",
+            "schema": {
+              "type": "string",
+              "pattern": "^prod_[a-zA-Z0-9]{10,}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products/search": {
+      "get": {
+        "tags": ["products"],
+        "summary": "Search products",
+        "description": "Search products using text query with fuzzy matching and suggestions",
+        "operationId": "searchProducts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query string",
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "example": "blue denim jacket"
+          },
+          {
+            "name": "suggest",
+            "in": "query",
+            "description": "Return search suggestions",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductSearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/render/tryon": {
+      "post": {
+        "tags": ["tryon"],
+        "summary": "Generate try-on render",
+        "description": "Create 3D virtual try-on render with avatar and selected product",
+        "operationId": "generateTryOnRender",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TryOnRequest"
+              },
+              "examples": {
+                "basic_tryon": {
+                  "value": {
+                    "avatarId": "avatar_abc456def",
+                    "productId": "prod_123abc456",
+                    "variantId": "var_123_001",
+                    "pose": {
+                      "type": "preset",
+                      "presetName": "standing_neutral",
+                      "customAdjustments": {
+                        "arm_rotation": 15,
+                        "leg_position": "slightly_apart"
+                      }
+                    },
+                    "lighting": {
+                      "type": "studio",
+                      "preset": "soft_daylight",
+                      "intensity": 0.8
+                    },
+                    "camera": {
+                      "angle": "front",
+                      "zoom": 1.0,
+                      "perspective": "realistic"
+                    },
+                    "output": {
+                      "format": "png",
+                      "resolution": "1080p",
+                      "quality": "high",
+                      "background": "transparent"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Try-on render initiated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TryOnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid try-on request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Asset compatibility issue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded - too many render requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/render/{id}/status": {
+      "get": {
+        "tags": ["tryon"],
+        "summary": "Get render status",
+        "description": "Check the status and progress of a try-on render operation",
+        "operationId": "getRenderStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique render identifier",
+            "schema": {
+              "type": "string",
+              "pattern": "^render_[a-zA-Z0-9]{10,}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Render not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/add": {
+      "post": {
+        "tags": ["cart"],
+        "summary": "Add item to cart",
+        "description": "Add a product variant to the user's shopping cart",
+        "operationId": "addToCart",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddToCartRequest"
+              },
+              "examples": {
+                "basic_add": {
+                  "value": {
+                    "productId": "prod_123abc456",
+                    "variantId": "var_123_001",
+                    "quantity": 1,
+                    "metadata": {
+                      "tryonRenderId": "render_xyz789abc",
+                      "size_confirmed": true,
+                      "color_confirmed": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Item added to cart successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddToCartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cart item data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product or variant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Item already in cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart": {
+      "get": {
+        "tags": ["cart"],
+        "summary": "Get shopping cart",
+        "description": "Retrieve the user's current shopping cart with all items",
+        "operationId": "getCart",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cart retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["cart"],
+        "summary": "Clear cart",
+        "description": "Remove all items from the shopping cart",
+        "operationId": "clearCart",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cart cleared successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/item/{itemId}": {
+      "delete": {
+        "tags": ["cart"],
+        "summary": "Remove item from cart",
+        "description": "Remove a specific item from the shopping cart",
+        "operationId": "removeFromCart",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "description": "Unique cart item identifier",
+            "schema": {
+              "type": "string",
+              "pattern": "^cart_[a-zA-Z0-9]{10,}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed from cart successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cart item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/item/{itemId}/quantity": {
+      "put": {
+        "tags": ["cart"],
+        "summary": "Update item quantity",
+        "description": "Update the quantity of a specific item in the cart",
+        "operationId": "updateCartItemQuantity",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "description": "Unique cart item identifier",
+            "schema": {
+              "type": "string",
+              "pattern": "^cart_[a-zA-Z0-9]{10,}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCartItemRequest"
+              },
+              "examples": {
+                "increase": {
+                  "value": {
+                    "quantity": 2,
+                    "operation": "set"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quantity updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartItemUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid quantity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/order/create": {
+      "post": {
+        "tags": ["orders"],
+        "summary": "Create order",
+        "description": "Create a new order from cart items",
+        "operationId": "createOrder",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderRequest"
+              },
+              "examples": {
+                "basic_order": {
+                  "value": {
+                    "cartId": "cart_abc123def456",
+                    "shippingAddress": {
+                      "firstName": "John",
+                      "lastName": "Doe",
+                      "street": "123 Main St",
+                      "apartment": "Apt 4B",
+                      "city": "New York",
+                      "state": "NY",
+                      "zipCode": "10001",
+                      "country": "US",
+                      "phone": "+1-555-0123"
+                    },
+                    "billingAddress": {
+                      "sameAsShipping": true
+                    },
+                    "paymentMethodId": "pm_123456789",
+                    "shippingMethod": "standard",
+                    "notes": "Leave at front door",
+                    "couponCode": "WELCOME10"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid order data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Insufficient stock or cart changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/order/{id}": {
+      "get": {
+        "tags": ["orders"],
+        "summary": "Get order details",
+        "description": "Retrieve detailed information about a specific order",
+        "operationId": "getOrderDetails",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique order identifier",
+            "schema": {
+              "type": "string",
+              "pattern": "^order_[a-zA-Z0-9]{10,}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile": {
+      "get": {
+        "tags": ["profile"],
+        "summary": "Get user profile",
+        "description": "Retrieve the authenticated user's profile information",
+        "operationId": "getUserProfile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["profile"],
+        "summary": "Update user profile",
+        "description": "Update the authenticated user's profile information",
+        "operationId": "updateUserProfile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/closet": {
+      "get": {
+        "tags": ["closet"],
+        "summary": "Get user closet",
+        "description": "Retrieve the user's virtual closet with owned and liked items",
+        "operationId": "getUserCloset",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter closet items by type",
+            "schema": {
+              "type": "string",
+              "enum": ["owned", "liked", "wishlist", "all"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by product category",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for pagination",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Closet retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/closet/add": {
+      "post": {
+        "tags": ["closet"],
+        "summary": "Add item to closet",
+        "description": "Add a product to the user's virtual closet",
+        "operationId": "addToCloset",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddToClosetRequest"
+              },
+              "examples": {
+                "add_owned": {
+                  "value": {
+                    "productId": "prod_123abc456",
+                    "variantId": "var_123_001",
+                    "type": "owned",
+                    "purchaseInfo": {
+                      "orderId": "order_xyz789abc",
+                      "purchaseDate": "2025-01-10",
+                      "price": 49.99
+                    }
+                  }
+                },
+                "add_liked": {
+                  "value": {
+                    "productId": "prod_789def123",
+                    "variantId": "var_789_002",
+                    "type": "liked"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Item added to closet successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid closet item data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/create-order": {
+      "post": {
+        "tags": ["payment"],
+        "summary": "Create payment order",
+        "description": "Create a payment order for order processing",
+        "operationId": "createPaymentOrder",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentOrderRequest"
+              },
+              "examples": {
+                "card_payment": {
+                  "value": {
+                    "orderId": "order_abc123def456",
+                    "amount": 129.97,
+                    "currency": "USD",
+                    "paymentMethod": {
+                      "type": "card",
+                      "cardId": "card_123456789",
+                      "saveForFuture": true
+                    },
+                    "billingAddress": {
+                      "firstName": "John",
+                      "lastName": "Doe",
+                      "street": "123 Main St",
+                      "city": "New York",
+                      "state": "NY",
+                      "zipCode": "10001",
+                      "country": "US"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment order created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payment data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/verify": {
+      "post": {
+        "tags": ["payment"],
+        "summary": "Verify payment",
+        "description": "Verify and confirm a payment transaction",
+        "operationId": "verifyPayment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyPaymentRequest"
+              },
+              "examples": {
+                "verify_card": {
+                  "value": {
+                    "paymentOrderId": "pay_abc123def456",
+                    "transactionId": "txn_789xyz123",
+                    "verificationCode": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentVerificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payment verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Payment requires additional verification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdditionalVerificationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT access token obtained from login endpoint"
+      },
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API key for service-to-service authentication"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User's email address",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "description": "User's password",
+            "minLength": 8,
+            "example": "securePassword123"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["google", "apple", "facebook"],
+            "description": "OAuth provider for social login"
+          },
+          "providerToken": {
+            "type": "string",
+            "description": "OAuth access token from provider"
+          },
+          "rememberMe": {
+            "type": "boolean",
+            "description": "Extend session duration",
+            "default": false
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Request success status"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              },
+              "tokens": {
+                "$ref": "#/components/schemas/AuthTokens"
+              }
+            }
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password", "firstName", "lastName", "agreeToTerms"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User's email address"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "description": "User's password",
+            "minLength": 8,
+            "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "User's first name",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "lastName": {
+            "type": "string",
+            "description": "User's last name",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "description": "User's date of birth (YYYY-MM-DD)",
+            "minimum": "1920-01-01",
+            "maximum": "2010-12-31"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["male", "female", "non_binary", "prefer_not_to_say"],
+            "description": "User's gender"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^\\+?[1-9]\\d{1,14}$",
+            "description": "User's phone number in international format"
+          },
+          "agreeToTerms": {
+            "type": "boolean",
+            "description": "User agreement to terms and conditions",
+            "enum": [true]
+          },
+          "marketingConsent": {
+            "type": "boolean",
+            "description": "User consent to marketing communications",
+            "default": false
+          }
+        }
+      },
+      "RegisterResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              },
+              "verificationEmailSent": {
+                "type": "boolean",
+                "description": "Whether verification email was sent"
+              },
+              "emailVerificationRequired": {
+                "type": "boolean",
+                "description": "Email verification is required before login"
+              }
+            }
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "required": ["refreshToken"],
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Valid refresh token"
+          }
+        }
+      },
+      "RefreshTokenResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "tokens": {
+                "$ref": "#/components/schemas/AuthTokens"
+              }
+            }
+          }
+        }
+      },
+      "ScanRequest": {
+        "type": "object",
+        "required": ["scanType", "images"],
+        "properties": {
+          "scanType": {
+            "type": "string",
+            "enum": ["photo_based", "video_based", "body_measurement"],
+            "description": "Type of scan to perform"
+          },
+          "images": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URL to uploaded image"
+                },
+                "pose": {
+                  "type": "string",
+                  "enum": ["front", "side_left", "side_right", "back", "custom"],
+                  "description": "Body pose in the image"
+                },
+                "quality": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Image quality score (0-1)"
+                }
+              }
+            }
+          },
+          "userPreferences": {
+            "type": "object",
+            "properties": {
+              "bodyType": {
+                "type": "string",
+                "enum": ["slim", "athletic", "curvy", "plus_size"],
+                "description": "User's body type"
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 250,
+                "description": "Height in centimeters"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 30,
+                "maximum": 300,
+                "description": "Weight in kilograms"
+              },
+              "preferences": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["casual", "formal", "business", "sport", "party", "sleepwear"]
+                }
+              }
+            }
+          }
+        }
+      },
+      "ScanResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "scanId": {
+                "type": "string",
+                "description": "Unique scan identifier"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["queued", "processing", "completed", "failed"],
+                "description": "Current scan status"
+              },
+              "estimatedTimeMinutes": {
+                "type": "integer",
+                "description": "Estimated processing time in minutes"
+              },
+              "queuePosition": {
+                "type": "integer",
+                "description": "Position in processing queue"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "webhookUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Webhook URL for scan completion notification"
+              }
+            }
+          }
+        }
+      },
+      "ScanStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "scanId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["queued", "processing", "completed", "failed"]
+              },
+              "progress": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Completion percentage"
+              },
+              "stage": {
+                "type": "string",
+                "description": "Current processing stage"
+              },
+              "estimatedTimeRemaining": {
+                "type": "integer",
+                "description": "Estimated remaining time in seconds"
+              },
+              "messages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Status messages during processing"
+              },
+              "avatarId": {
+                "type": "string",
+                "description": "Generated avatar ID when completed"
+              },
+              "qualityScore": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Avatar quality score"
+              },
+              "processingTime": {
+                "type": "integer",
+                "description": "Total processing time in seconds"
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "details": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "AvatarResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Avatar"
+          }
+        }
+      },
+      "ProductListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "products": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              "facets": {
+                "type": "object",
+                "properties": {
+                  "categories": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    }
+                  },
+                  "brands": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    }
+                  },
+                  "priceRange": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProductDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProductDetail"
+          }
+        }
+      },
+      "ProductSearchResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "products": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["brand", "category", "product", "style"]
+                    }
+                  }
+                }
+              },
+              "totalResults": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "TryOnRequest": {
+        "type": "object",
+        "required": ["avatarId", "productId"],
+        "properties": {
+          "avatarId": {
+            "type": "string",
+            "description": "Avatar identifier"
+          },
+          "productId": {
+            "type": "string",
+            "description": "Product identifier"
+          },
+          "variantId": {
+            "type": "string",
+            "description": "Product variant identifier"
+          },
+          "pose": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["preset", "custom"]
+              },
+              "presetName": {
+                "type": "string",
+                "description": "Preset pose name"
+              },
+              "customAdjustments": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "lighting": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["studio", "natural", "custom"]
+              },
+              "preset": {
+                "type": "string"
+              },
+              "intensity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2,
+                "default": 1
+              }
+            }
+          },
+          "camera": {
+            "type": "object",
+            "properties": {
+              "angle": {
+                "type": "string",
+                "enum": ["front", "side", "back", "three_quarter"]
+              },
+              "zoom": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 3,
+                "default": 1
+              },
+              "perspective": {
+                "type": "string",
+                "enum": ["realistic", "high_fashion", "editorial"],
+                "default": "realistic"
+              }
+            }
+          },
+          "output": {
+            "type": "object",
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": ["png", "jpg", "webp", "gif"],
+                "default": "png"
+              },
+              "resolution": {
+                "type": "string",
+                "enum": ["720p", "1080p", "4k"],
+                "default": "1080p"
+              },
+              "quality": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "default": "high"
+              },
+              "background": {
+                "type": "string",
+                "enum": ["transparent", "white", "black", "custom"],
+                "default": "transparent"
+              }
+            }
+          }
+        }
+      },
+      "TryOnResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "renderId": {
+                "type": "string",
+                "description": "Unique render identifier"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["queued", "processing", "completed", "failed"],
+                "description": "Render status"
+              },
+              "estimatedTimeMinutes": {
+                "type": "integer",
+                "description": "Estimated processing time"
+              },
+              "queuePosition": {
+                "type": "integer",
+                "description": "Position in render queue"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "webhookUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Webhook for render completion"
+              }
+            }
+          }
+        }
+      },
+      "RenderStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "renderId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["queued", "processing", "completed", "failed"]
+              },
+              "progress": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "stage": {
+                "type": "string"
+              },
+              "estimatedTimeRemaining": {
+                "type": "integer"
+              },
+              "previewUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Preview image URL when available"
+              },
+              "finalUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Final render URL when completed"
+              },
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "details": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "AddToCartRequest": {
+        "type": "object",
+        "required": ["productId", "quantity"],
+        "properties": {
+          "productId": {
+            "type": "string",
+            "description": "Product identifier"
+          },
+          "variantId": {
+            "type": "string",
+            "description": "Product variant identifier"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Quantity to add"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata for the cart item"
+          }
+        }
+      },
+      "AddToCartResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "cartItem": {
+                "$ref": "#/components/schemas/CartItem"
+              },
+              "cart": {
+                "$ref": "#/components/schemas/Cart"
+              }
+            }
+          }
+        }
+      },
+      "CartResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Cart"
+          }
+        }
+      },
+      "UpdateCartItemRequest": {
+        "type": "object",
+        "required": ["quantity"],
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "New quantity (0 to remove item)"
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["set", "increment", "decrement"],
+            "default": "set"
+          }
+        }
+      },
+      "CartItemUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "cartItem": {
+                "$ref": "#/components/schemas/CartItem"
+              },
+              "cart": {
+                "$ref": "#/components/schemas/Cart"
+              }
+            }
+          }
+        }
+      },
+      "CreateOrderRequest": {
+        "type": "object",
+        "required": ["cartId", "shippingAddress", "shippingMethod"],
+        "properties": {
+          "cartId": {
+            "type": "string",
+            "description": "Cart identifier"
+          },
+          "shippingAddress": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "billingAddress": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Address"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "sameAsShipping": {
+                    "type": "boolean",
+                    "enum": [true]
+                  }
+                }
+              }
+            ]
+          },
+          "paymentMethodId": {
+            "type": "string",
+            "description": "Saved payment method ID"
+          },
+          "shippingMethod": {
+            "type": "string",
+            "enum": ["standard", "express", "overnight"],
+            "description": "Shipping method"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Order notes"
+          },
+          "couponCode": {
+            "type": "string",
+            "description": "Discount coupon code"
+          }
+        }
+      },
+      "CreateOrderResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "order": {
+                "$ref": "#/components/schemas/Order"
+              },
+              "paymentRequired": {
+                "type": "boolean",
+                "description": "Whether payment is required"
+              },
+              "paymentUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Payment URL if payment required"
+              }
+            }
+          }
+        }
+      },
+      "OrderDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/OrderDetail"
+          }
+        }
+      },
+      "UserProfileResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserProfile"
+          }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["male", "female", "non_binary", "prefer_not_to_say"]
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^\\+?[1-9]\\d{1,14}$"
+          },
+          "preferences": {
+            "type": "object",
+            "properties": {
+              "notifications": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "push": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "marketing": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "privacy": {
+                "type": "object",
+                "properties": {
+                  "profileVisibility": {
+                    "type": "string",
+                    "enum": ["public", "friends", "private"],
+                    "default": "private"
+                  },
+                  "dataSharing": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Address"
+            }
+          }
+        }
+      },
+      "ClosetResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ClosetItem"
+                }
+              },
+              "pagination": {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              "stats": {
+                "type": "object",
+                "properties": {
+                  "totalItems": {
+                    "type": "integer"
+                  },
+                  "ownedItems": {
+                    "type": "integer"
+                  },
+                  "likedItems": {
+                    "type": "integer"
+                  },
+                  "wishlistItems": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "AddToClosetRequest": {
+        "type": "object",
+        "required": ["productId", "type"],
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "variantId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["owned", "liked", "wishlist"]
+          },
+          "purchaseInfo": {
+            "type": "object",
+            "properties": {
+              "orderId": {
+                "type": "string"
+              },
+              "purchaseDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "price": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "CreatePaymentOrderRequest": {
+        "type": "object",
+        "required": ["orderId", "amount", "currency", "paymentMethod"],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "description": "Order identifier"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Payment amount"
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["USD", "EUR", "GBP", "CAD", "AUD"],
+            "description": "Currency code"
+          },
+          "paymentMethod": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["card", "paypal", "apple_pay", "google_pay"]
+              },
+              "cardId": {
+                "type": "string",
+                "description": "Saved card identifier"
+              },
+              "saveForFuture": {
+                "type": "boolean",
+                "description": "Save payment method for future use"
+              }
+            }
+          },
+          "billingAddress": {
+            "$ref": "#/components/schemas/Address"
+          }
+        }
+      },
+      "PaymentOrderResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "paymentOrderId": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "number"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "processing", "completed", "failed"]
+              },
+              "paymentUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "Payment URL for external payment processors"
+              },
+              "transactionId": {
+                "type": "string",
+                "description": "Transaction identifier"
+              }
+            }
+          }
+        }
+      },
+      "VerifyPaymentRequest": {
+        "type": "object",
+        "required": ["paymentOrderId", "transactionId"],
+        "properties": {
+          "paymentOrderId": {
+            "type": "string"
+          },
+          "transactionId": {
+            "type": "string"
+          },
+          "verificationCode": {
+            "type": "string",
+            "description": "3D Secure or other verification code"
+          }
+        }
+      },
+      "PaymentVerificationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "paymentId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["verified", "failed", "pending"]
+              },
+              "orderId": {
+                "type": "string"
+              },
+              "transactionDetails": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "AdditionalVerificationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "verificationRequired": {
+                "type": "boolean",
+                "enum": [true]
+              },
+              "verificationMethod": {
+                "type": "string",
+                "enum": ["3d_secure", "sms_otp", "email_otp"]
+              },
+              "verificationUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [false]
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Error code for client handling"
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable error message"
+              },
+              "details": {
+                "type": "object",
+                "description": "Additional error details"
+              }
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [false]
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["VALIDATION_ERROR"]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "RateLimitError": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [false]
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["RATE_LIMIT_EXCEEDED"]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer"
+                  },
+                  "remaining": {
+                    "type": "integer"
+                  },
+                  "resetTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "description": "Success message"
+              }
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "email", "firstName", "lastName"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique user identifier"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "format": "uri"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "phoneVerified": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["male", "female", "non_binary", "prefer_not_to_say"]
+          },
+          "phoneNumber": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "format": "uri"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "phoneVerified": {
+            "type": "boolean"
+          },
+          "preferences": {
+            "type": "object",
+            "properties": {
+              "notifications": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "boolean"
+                  },
+                  "push": {
+                    "type": "boolean"
+                  },
+                  "marketing": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "privacy": {
+                "type": "object",
+                "properties": {
+                  "profileVisibility": {
+                    "type": "string",
+                    "enum": ["public", "friends", "private"]
+                  },
+                  "dataSharing": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "units": {
+                "type": "object",
+                "properties": {
+                  "height": {
+                    "type": "string",
+                    "enum": ["cm", "in"]
+                  },
+                  "weight": {
+                    "type": "string",
+                    "enum": ["kg", "lbs"]
+                  }
+                }
+              }
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Address"
+            }
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "avatarScans": {
+                "type": "integer"
+              },
+              "tryOnsGenerated": {
+                "type": "integer"
+              },
+              "ordersPlaced": {
+                "type": "integer"
+              },
+              "totalSpent": {
+                "type": "number"
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AuthTokens": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT access token"
+          },
+          "accessTokenExpires": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh token"
+          },
+          "refreshTokenExpires": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Avatar": {
+        "type": "object",
+        "required": ["id", "name", "status"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "archived", "processing"]
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "format": {
+                "type": "string",
+                "enum": ["glb", "gltf", "fbx", "obj"]
+              },
+              "size": {
+                "type": "string"
+              },
+              "polycount": {
+                "type": "integer"
+              },
+              "textures": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["diffuse", "normal", "roughness", "metallic", "ao"]
+                }
+              }
+            }
+          },
+          "preview": {
+            "type": "object",
+            "properties": {
+              "thumbnail": {
+                "type": "string",
+                "format": "uri"
+              },
+              "fullSize": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          },
+          "measurements": {
+            "type": "object",
+            "properties": {
+              "height": {
+                "type": "number"
+              },
+              "weight": {
+                "type": "number"
+              },
+              "chest": {
+                "type": "number"
+              },
+              "waist": {
+                "type": "number"
+              },
+              "hips": {
+                "type": "number"
+              },
+              "shoulderWidth": {
+                "type": "number"
+              },
+              "armLength": {
+                "type": "number"
+              },
+              "legLength": {
+                "type": "number"
+              }
+            }
+          },
+          "qualityScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "processingTime": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": ["id", "name", "description", "price", "category"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "originalPrice": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string",
+            "default": "USD"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "subcategory": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": ["front", "back", "side", "detail", "lifestyle"]
+                },
+                "resolution": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high", "4k"]
+                }
+              }
+            }
+          },
+          "model3D": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "format": {
+                "type": "string",
+                "enum": ["glb", "gltf", "fbx"]
+              },
+              "size": {
+                "type": "string"
+              },
+              "polycount": {
+                "type": "integer"
+              }
+            }
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                },
+                "color": {
+                  "type": "string"
+                },
+                "colorHex": {
+                  "type": "string",
+                  "pattern": "^#[0-9A-Fa-f]{6}$"
+                },
+                "stock": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "rating": {
+            "type": "object",
+            "properties": {
+              "average": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "tryonAvailable": {
+            "type": "boolean",
+            "default": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "material": {
+            "type": "string"
+          },
+          "careInstructions": {
+            "type": "string"
+          },
+          "returnPolicy": {
+            "type": "string"
+          },
+          "shipping": {
+            "type": "object",
+            "properties": {
+              "weight": {
+                "type": "number"
+              },
+              "dimensions": {
+                "type": "object",
+                "properties": {
+                  "length": {
+                    "type": "number"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  }
+                }
+              },
+              "freeShippingThreshold": {
+                "type": "number"
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ProductDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Product"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "detailedDescription": {
+                "type": "string"
+              },
+              "specifications": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "sizing": {
+                "type": "object",
+                "properties": {
+                  "chart": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "fit": {
+                    "type": "string",
+                    "enum": ["slim", "regular", "relaxed", "oversized"]
+                  },
+                  "sizeGuide": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "chest": {
+                          "type": "number"
+                        },
+                        "waist": {
+                          "type": "number"
+                        },
+                        "shoulder": {
+                          "type": "number"
+                        },
+                        "sleeve": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "reviews": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "userId": {
+                      "type": "string"
+                    },
+                    "userName": {
+                      "type": "string"
+                    },
+                    "rating": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "comment": {
+                      "type": "string"
+                    },
+                    "helpful": {
+                      "type": "integer"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              },
+              "relatedProducts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CartItem": {
+        "type": "object",
+        "required": ["id", "product", "quantity"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "Cart": {
+        "type": "object",
+        "required": ["items", "total", "itemCount"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartItem"
+            }
+          },
+          "subtotal": {
+            "type": "number",
+            "minimum": 0
+          },
+          "tax": {
+            "type": "number",
+            "minimum": 0
+          },
+          "shipping": {
+            "type": "number",
+            "minimum": 0
+          },
+          "discount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "total": {
+            "type": "number",
+            "minimum": 0
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "couponCode": {
+            "type": "string"
+          },
+          "estimatedDelivery": {
+            "type": "string",
+            "format": "date"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": ["id", "userId", "items", "totalAmount", "status"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartItem"
+            }
+          },
+          "subtotal": {
+            "type": "number",
+            "minimum": 0
+          },
+          "tax": {
+            "type": "number",
+            "minimum": 0
+          },
+          "shipping": {
+            "type": "number",
+            "minimum": 0
+          },
+          "discount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "totalAmount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "confirmed", "shipped", "delivered", "cancelled", "refunded"]
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": ["pending", "processing", "completed", "failed", "refunded"]
+          },
+          "shippingMethod": {
+            "type": "string"
+          },
+          "trackingNumber": {
+            "type": "string"
+          },
+          "trackingUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "estimatedDelivery": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OrderDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Order"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "shippingAddress": {
+                "$ref": "#/components/schemas/Address"
+              },
+              "billingAddress": {
+                "$ref": "#/components/schemas/Address"
+              },
+              "paymentMethod": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["card", "paypal", "apple_pay", "google_pay"]
+                  },
+                  "last4": {
+                    "type": "string"
+                  },
+                  "brand": {
+                    "type": "string"
+                  },
+                  "expiryMonth": {
+                    "type": "integer"
+                  },
+                  "expiryYear": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "payment": {
+                "type": "object",
+                "properties": {
+                  "transactionId": {
+                    "type": "string"
+                  },
+                  "paymentDate": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "refundAmount": {
+                    "type": "number"
+                  },
+                  "refundDate": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              },
+              "timeline": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Address": {
+        "type": "object",
+        "required": ["firstName", "lastName", "street", "city", "state", "zipCode", "country"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "street": {
+            "type": "string"
+          },
+          "apartment": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zipCode": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "currentPage": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          },
+          "totalItems": {
+            "type": "integer"
+          },
+          "itemsPerPage": {
+            "type": "integer"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ClosetItem": {
+        "type": "object",
+        "required": ["id", "productId", "type"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["owned", "liked", "wishlist"]
+          },
+          "purchaseInfo": {
+            "type": "object",
+            "properties": {
+              "orderId": {
+                "type": "string"
+              },
+              "purchaseDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "price": {
+                "type": "number"
+              },
+              "warrantyExpiry": {
+                "type": "string",
+                "format": "date"
+              }
+            }
+          },
+          "notes": {
+            "type": "string"
+          },
+          "usageCount": {
+            "type": "integer"
+          },
+          "lastUsed": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

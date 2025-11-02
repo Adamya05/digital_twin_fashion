@@ -1,0 +1,20 @@
+<svg width="108" height="108" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196F3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1976D2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="54" cy="54" r="52" fill="url(#grad1)" stroke="#FFFFFF" stroke-width="2"/>
+  
+  <!-- Fashion icon - stylized shirt -->
+  <path d="M30 35 L35 30 L40 35 L43 32 L43 40 L40 43 L35 40 L30 45 L35 50 L40 55 L35 60 L30 55 L27 58 L27 40 L30 37 L32 35 L30 35 Z" 
+        fill="#FFFFFF" opacity="0.9"/>
+  
+  <!-- 3D cube for digital twin -->
+  <rect x="45" y="35" width="25" height="25" fill="#FFFFFF" opacity="0.7"/>
+  <path d="M45 35 L50 30 L75 30 L70 35 Z" fill="#FFFFFF" opacity="0.5"/>
+  <path d="M70 35 L75 30 L75 60 L70 60 Z" fill="#FFFFFF" opacity="0.6"/>
+</svg>
