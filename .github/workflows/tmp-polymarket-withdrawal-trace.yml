@@ -1,0 +1,281 @@
+# Temporary read-only research workflow. Do not merge.
+name: Temporary Polymarket withdrawal trace
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Trace withdrawals
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures
+          import json
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from collections import defaultdict
+          from pathlib import Path
+
+          WALLETS = {
+              "main": {"address": "0x565ca59275f81991bd9877d7fa8404c5ecf6519e", "start": 88300000},
+              "alt1": {"address": "0x75973c667cec880353450be3a6f17c5da67b4421", "start": 90350000},
+              "alt2": {"address": "0xa01c0a5e4f8c1114e95c68ee97694bc95e51766c", "start": 89400000},
+          }
+          PUSD = "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb"
+          CORE = {
+              "0xe111180000d2663c0091e4f400237545b87b996b",
+              "0xe2222d279d744050d28e00520010520000310f59",
+              "0x4d97dcd97ec945f40cf65f87097ace5ea0476045",
+              "0x006f54f7f9a22e0000cc2ab60031000000ae9fef",
+              "0x1000008dd9001b968442c1000017eae6e0da00ba",
+              "0x200000900045e3b6259600682756002200028933",
+              "0x30000034706c7d8e12009dab006be20000c031a8",
+              "0xe3333700ca9d93003f00f0f71f8515005f6c00aa",
+              "0xa1200000d0002264c9a1698e001292d00e1b00af",
+              "0x93070a847efef7f70739046a929d47a521f5b8ee",
+              "0x2957922eb93258b93368531d39facca3b4dc5854",
+              "0xebc2459ec962869ca4c0bd1e06368272732bcb08",
+              "0xada100db00ca00073811820692005400218fce1f",
+              "0xada2005600dec949baf300f4c6120000bdb6eaab",
+              "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb",
+              "0x0000000000000000000000000000000000000000",
+          }
+          CORE |= {v["address"].lower() for v in WALLETS.values()}
+          BLOCKSCOUT = "https://polygon.blockscout.com"
+          CHAIN_EXPLORERS = {
+              "1": "https://eth.blockscout.com",
+              "10": "https://optimism.blockscout.com",
+              "56": "https://bsc.blockscout.com",
+              "100": "https://gnosis.blockscout.com",
+              "137": "https://polygon.blockscout.com",
+              "8453": "https://base.blockscout.com",
+              "42161": "https://arbitrum.blockscout.com",
+              "59144": "https://explorer.linea.build",
+              "534352": "https://scroll.blockscout.com",
+          }
+
+          def req(url, params=None, method="GET", body=None, timeout=35, attempts=4):
+              if params:
+                  url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+              payload = json.dumps(body).encode() if body is not None else None
+              headers = {"User-Agent": "pm-withdrawal-trace/2.0", "Accept": "application/json"}
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+              last = None
+              for attempt in range(attempts):
+                  try:
+                      r = urllib.request.Request(url, data=payload, method=method, headers=headers)
+                      with urllib.request.urlopen(r, timeout=timeout) as response:
+                          raw = response.read()
+                          try:
+                              data = json.loads(raw)
+                          except Exception:
+                              data = None
+                          return {"ok": True, "status": response.status, "url": response.url,
+                                  "data": data, "raw": None if data is not None else raw.decode(errors="replace")[:4000]}
+                  except urllib.error.HTTPError as exc:
+                      raw = exc.read().decode(errors="replace")
+                      last = {"ok": False, "status": exc.code, "url": url,
+                              "error": f"HTTPError: {exc}", "raw": raw[:4000]}
+                      if exc.code not in (429, 500, 502, 503, 504):
+                          return last
+                  except Exception as exc:
+                      last = {"ok": False, "url": url, "error": f"{type(exc).__name__}: {exc}"}
+                  time.sleep(0.7 * (attempt + 1))
+              return last
+
+          def current_block():
+              r = req("https://polygon.drpc.org", method="POST", body={
+                  "jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []
+              })
+              try:
+                  return int(r["data"]["result"], 16), r
+              except Exception:
+                  return 92000000, r
+
+          tip, tip_response = current_block()
+          WINDOW = 40000
+
+          def get_window(job):
+              label, address, start, end = job
+              r = req(f"{BLOCKSCOUT}/api", {
+                  "module": "account", "action": "tokentx", "address": address,
+                  "startblock": start, "endblock": end, "sort": "asc",
+                  "page": 1, "offset": 10000,
+              }, timeout=45)
+              data = r.get("data")
+              rows = data.get("result", []) if isinstance(data, dict) else []
+              if not isinstance(rows, list):
+                  rows = []
+              return label, start, end, rows, r
+
+          jobs = []
+          for label, spec in WALLETS.items():
+              s = spec["start"]
+              while s <= tip:
+                  jobs.append((label, spec["address"], s, min(s + WINDOW - 1, tip)))
+                  s += WINDOW
+
+          all_rows = defaultdict(list)
+          window_errors = []
+          window_caps = []
+          with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+              futures = [pool.submit(get_window, job) for job in jobs]
+              for future in concurrent.futures.as_completed(futures):
+                  label, start, end, rows, response = future.result()
+                  all_rows[label].extend(rows)
+                  if not response.get("ok"):
+                      window_errors.append({"label": label, "start": start, "end": end, "response": response})
+                  if len(rows) >= 10000:
+                      window_caps.append({"label": label, "start": start, "end": end, "count": len(rows)})
+
+          # De-duplicate exact token-transfer records returned at boundaries/retries.
+          for label, rows in all_rows.items():
+              seen = set(); unique = []
+              for row in rows:
+                  key = (row.get("hash"), row.get("transactionIndex"), row.get("contractAddress"),
+                         row.get("from"), row.get("to"), row.get("value"))
+                  if key not in seen:
+                      seen.add(key); unique.append(row)
+              all_rows[label] = sorted(unique, key=lambda x: (int(x.get("blockNumber", 0)), int(x.get("transactionIndex", 0))))
+
+          def amount(row):
+              try:
+                  return int(row.get("value", "0")) / 10 ** int(row.get("tokenDecimal", "0"))
+              except Exception:
+                  return None
+
+          def compact(row):
+              return {
+                  "block": row.get("blockNumber"), "timestamp": row.get("timeStamp"),
+                  "hash": row.get("hash"), "from": row.get("from"), "to": row.get("to"),
+                  "token": row.get("tokenSymbol"), "token_contract": row.get("contractAddress"),
+                  "amount": amount(row), "function": row.get("functionName"),
+                  "method_id": row.get("methodId"), "gas_price": row.get("gasPrice"),
+              }
+
+          candidates = defaultdict(lambda: defaultdict(list))
+          excluded = defaultdict(lambda: defaultdict(int))
+          for label, rows in all_rows.items():
+              wallet = WALLETS[label]["address"].lower()
+              for row in rows:
+                  if str(row.get("from", "")).lower() != wallet:
+                      continue
+                  token = str(row.get("contractAddress", "")).lower()
+                  recipient = str(row.get("to", "")).lower()
+                  fn = str(row.get("functionName", "")).lower()
+                  if token != PUSD:
+                      excluded[label]["non_pusd_out"] += 1
+                      continue
+                  if "matchorders" in fn:
+                      excluded[label]["trade_matchorders"] += 1
+                      continue
+                  if recipient in CORE:
+                      excluded[label]["known_core"] += 1
+                      continue
+                  candidates[label][recipient].append(row)
+
+          unique_candidates = sorted({a for d in candidates.values() for a in d})
+
+          def trace_candidate(address):
+              bridge = req(f"https://bridge.polymarket.com/status/{urllib.parse.quote(address, safe='')}")
+              meta = req(f"{BLOCKSCOUT}/api/v2/addresses/{address}")
+              txs = []
+              data = bridge.get("data")
+              if isinstance(data, dict) and isinstance(data.get("transactions"), list):
+                  txs = data["transactions"]
+              destinations = []
+              for btx in txs:
+                  chain = str(btx.get("toChainId", ""))
+                  tx_hash = btx.get("txHash")
+                  explorer = CHAIN_EXPLORERS.get(chain)
+                  detail = req(f"{explorer}/api/v2/transactions/{tx_hash}") if explorer and tx_hash else None
+                  destinations.append({"bridge_record": btx, "destination_tx": detail})
+              # Also inspect subsequent outgoing token movements from the candidate on Polygon.
+              downstream = req(f"{BLOCKSCOUT}/api/v2/addresses/{address}/token-transfers", {
+                  "type": "ERC-20", "filter": "from"
+              })
+              return address, {"bridge": bridge, "metadata": meta,
+                               "destinations": destinations, "polygon_downstream": downstream}
+
+          traces = {}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as pool:
+              futures = [pool.submit(trace_candidate, a) for a in unique_candidates]
+              for future in concurrent.futures.as_completed(futures):
+                  address, trace = future.result(); traces[address] = trace
+
+          def bridge_records(trace):
+              data = trace.get("bridge", {}).get("data")
+              return data.get("transactions", []) if isinstance(data, dict) else []
+
+          summary = {
+              "tip": tip, "tip_response": tip_response,
+              "window_errors": window_errors, "window_caps": window_caps,
+              "candidate_overlap": {}, "destination_overlap": {}, "wallets": {},
+          }
+          destination_ids = defaultdict(set)
+          for label in WALLETS:
+              ws = {
+                  "wallet": WALLETS[label]["address"], "erc20_rows": len(all_rows[label]),
+                  "excluded": dict(excluded[label]), "candidates": {}
+              }
+              for address, rows in sorted(candidates[label].items()):
+                  trace = traces[address]
+                  records = bridge_records(trace)
+                  for item in trace.get("destinations", []):
+                      rec = item.get("bridge_record", {})
+                      detail = item.get("destination_tx") or {}
+                      txdata = detail.get("data") if isinstance(detail, dict) else None
+                      destination_ids[label].add((str(rec.get("toChainId")), str(rec.get("txHash")).lower()))
+                      if isinstance(txdata, dict):
+                          to_obj = txdata.get("to")
+                          if isinstance(to_obj, dict) and to_obj.get("hash"):
+                              destination_ids[label].add((str(rec.get("toChainId")), str(to_obj["hash"]).lower()))
+                          frm_obj = txdata.get("from")
+                          if isinstance(frm_obj, dict) and frm_obj.get("hash"):
+                              destination_ids[label].add((str(rec.get("toChainId")), str(frm_obj["hash"]).lower()))
+                  meta_data = trace.get("metadata", {}).get("data")
+                  ws["candidates"][address] = {
+                      "count": len(rows), "total_pusd": sum(amount(r) or 0 for r in rows),
+                      "first": compact(rows[0]), "last": compact(rows[-1]),
+                      "all_source_transfers": [compact(r) for r in rows],
+                      "bridge_records": records,
+                      "destination_details": trace.get("destinations", []),
+                      "recipient_metadata": meta_data,
+                      "polygon_downstream": trace.get("polygon_downstream"),
+                  }
+              summary["wallets"][label] = ws
+
+          labels = sorted(WALLETS)
+          for i, a in enumerate(labels):
+              for b in labels[i+1:]:
+                  direct = sorted(set(candidates[a]) & set(candidates[b]))
+                  if direct:
+                      summary["candidate_overlap"][f"{a}|{b}"] = direct
+                  dest = sorted(destination_ids[a] & destination_ids[b])
+                  if dest:
+                      summary["destination_overlap"][f"{a}|{b}"] = dest
+
+          full = {"summary": summary, "all_rows": all_rows, "traces": traces}
+          Path("polymarket-withdrawal-trace.json").write_text(json.dumps(full, indent=2, sort_keys=True), encoding="utf-8")
+          print("WITHDRAWAL_TRACE_START")
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          print("WITHDRAWAL_TRACE_END")
+          PY
+      - name: Upload trace
+        uses: actions/upload-artifact@v4
+        with:
+          name: polymarket-withdrawal-trace
+          path: polymarket-withdrawal-trace.json
+          retention-days: 3
