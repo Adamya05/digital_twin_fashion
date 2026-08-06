@@ -2,8 +2,10 @@
 name: Temporary Polymarket withdrawal trace
 
 on:
-  pull_request:
+  push:
     branches: [main]
+    paths:
+      - '.github/workflows/tmp-pm-withdrawal-main.yml'
   workflow_dispatch:
 
 permissions:
@@ -19,390 +21,139 @@ jobs:
         run: |
           python3 - <<'PY'
           from __future__ import annotations
-
-          import concurrent.futures
-          import json
-          import time
-          import urllib.error
-          import urllib.parse
-          import urllib.request
+          import concurrent.futures, json, time, urllib.error, urllib.parse, urllib.request
           from collections import defaultdict
           from pathlib import Path
 
-          WALLETS = {
-              "main": "0x565ca59275f81991bd9877d7fa8404c5ecf6519e",
-              "alt1": "0x75973c667cec880353450be3a6f17c5da67b4421",
-              "alt2": "0xa01c0a5e4f8c1114e95c68ee97694bc95e51766c",
-          }
-          TOKENS = {
-              "pUSD": "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb",
-              "USDC.e": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-              "USDC": "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
-          }
-          TOKEN_BY_ADDRESS = {address.lower(): name for name, address in TOKENS.items()}
-          POLYGON = "https://polygon.blockscout.com"
-          CLASSIC = POLYGON + "/api"
-          DATA_API = "https://data-api.polymarket.com"
-          BRIDGE_API = "https://bridge.polymarket.com"
-          RELAY_API = "https://api.relay.link/requests/v2"
-          ZERO = "0x0000000000000000000000000000000000000000"
-          KNOWN_CORE = {
-              "0xe111180000d2663c0091e4f400237545b87b996b",
-              "0xe2222d279d744050d28e00520010520000310f59",
-              "0x4d97dcd97ec945f40cf65f87097ace5ea0476045",
-              "0x006f54f7f9a22e0000cc2ab60031000000ae9fef",
-              "0x1000008dd9001b968442c1000017eae6e0da00ba",
-              "0x200000900045e3b6259600682756002200028933",
-              "0x30000034706c7d8e12009dab006be20000c031a8",
-              "0xe3333700ca9d93003f00f0f71f8515005f6c00aa",
-              "0xa1200000d0002264c9a1698e001292d00e1b00af",
-              "0x93070a847efef7f70739046a929d47a521f5b8ee",
-              "0x2957922eb93258b93368531d39facca3b4dc5854",
-              "0xebc2459ec962869ca4c0bd1e06368272732bcb08",
-              "0xada100db00ca00073811820692005400218fce1f",
-              "0xada2005600dec949baf300f4c6120000bdb6eaab",
-              ZERO,
-          }
-          KNOWN_CORE |= {address.lower() for address in WALLETS.values()}
-
-          def norm(value):
-              return str(value or "").lower()
-
-          def request_json(url, params=None, timeout=45, attempts=5):
-              if params:
-                  url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params, doseq=True)
-              headers = {
-                  "Accept": "application/json",
-                  "User-Agent": "pm-withdrawal-trace-fixed/1.0",
-              }
-              last = None
-              for attempt in range(attempts):
-                  try:
-                      req = urllib.request.Request(url, headers=headers)
-                      with urllib.request.urlopen(req, timeout=timeout) as response:
-                          raw = response.read()
-                          return {
-                              "ok": True,
-                              "status": response.status,
-                              "url": response.url,
-                              "data": json.loads(raw),
-                          }
-                  except urllib.error.HTTPError as exc:
-                      raw = exc.read().decode(errors="replace")
-                      last = {
-                          "ok": False,
-                          "status": exc.code,
-                          "url": url,
-                          "error": f"HTTPError: {exc}",
-                          "raw": raw[:4000],
-                      }
-                      if exc.code not in {429, 500, 502, 503, 504}:
-                          return last
-                  except Exception as exc:
-                      last = {
-                          "ok": False,
-                          "url": url,
-                          "error": f"{type(exc).__name__}: {exc}",
-                      }
-                  time.sleep(0.8 * (attempt + 1))
-              return last
-
-          def classic_token_history(address, token_address, max_pages=50):
-              rows = []
-              errors = []
-              for page in range(1, max_pages + 1):
-                  response = request_json(CLASSIC, {
-                      "module": "account",
-                      "action": "tokentx",
-                      "address": address,
-                      "contractaddress": token_address,
-                      "startblock": 0,
-                      "endblock": 999999999,
-                      "sort": "asc",
-                      "page": page,
-                      "offset": 10000,
-                  })
-                  data = response.get("data") if isinstance(response, dict) else None
-                  page_rows = data.get("result", []) if isinstance(data, dict) else []
-                  if not isinstance(page_rows, list):
-                      errors.append({"page": page, "response": response})
-                      break
-                  rows.extend(page_rows)
-                  if len(page_rows) < 10000:
-                      break
-              return {"rows": rows, "errors": errors}
-
-          def user_activity(address, max_pages=100):
-              rows = []
-              errors = []
-              for page in range(max_pages):
-                  offset = page * 500
-                  response = request_json(DATA_API + "/activity", {
-                      "user": address,
-                      "limit": 500,
-                      "offset": offset,
-                  })
-                  data = response.get("data") if isinstance(response, dict) else None
-                  if not isinstance(data, list):
-                      errors.append({"offset": offset, "response": response})
-                      break
-                  rows.extend(data)
-                  if len(data) < 500:
-                      break
-              return {"rows": rows, "errors": errors}
-
-          jobs = []
-          for label, wallet in WALLETS.items():
-              for token_name, token_address in TOKENS.items():
-                  jobs.append(("token", label, token_name, wallet, token_address))
-              jobs.append(("activity", label, None, wallet, None))
-
-          histories = defaultdict(dict)
-          activities = {}
-          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
-              future_map = {}
-              for kind, label, token_name, wallet, token_address in jobs:
-                  if kind == "token":
-                      future = pool.submit(classic_token_history, wallet, token_address)
-                  else:
-                      future = pool.submit(user_activity, wallet)
-                  future_map[future] = (kind, label, token_name)
-              for future in concurrent.futures.as_completed(future_map):
-                  kind, label, token_name = future_map[future]
-                  result = future.result()
-                  if kind == "token":
-                      histories[label][token_name] = result
-                  else:
-                      activities[label] = result
-
-          activity_types = defaultdict(lambda: defaultdict(set))
-          for label, payload in activities.items():
-              for row in payload["rows"]:
-                  tx_hash = norm(row.get("transactionHash"))
-                  if tx_hash:
-                      activity_types[label][tx_hash].add(str(row.get("type") or "").upper())
-
-          def transfer_amount(row):
+          WALLETS={
+            'main':'0x565ca59275f81991bd9877d7fa8404c5ecf6519e',
+            'alt1':'0x75973c667cec880353450be3a6f17c5da67b4421',
+            'alt2':'0xa01c0a5e4f8c1114e95c68ee97694bc95e51766c'}
+          TOKENS={
+            'pUSD':'0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb',
+            'USDC.e':'0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+            'USDC':'0x3c499c542cef5e3811e1192ce70d8cc03d5c3359'}
+          POLYGON='https://polygon.blockscout.com'; CLASSIC=POLYGON+'/api'
+          DATA='https://data-api.polymarket.com'; BRIDGE='https://bridge.polymarket.com'
+          RELAY='https://api.relay.link/requests/v2'
+          CORE={
+            '0xe111180000d2663c0091e4f400237545b87b996b','0xe2222d279d744050d28e00520010520000310f59',
+            '0x4d97dcd97ec945f40cf65f87097ace5ea0476045','0x006f54f7f9a22e0000cc2ab60031000000ae9fef',
+            '0x1000008dd9001b968442c1000017eae6e0da00ba','0x200000900045e3b6259600682756002200028933',
+            '0x30000034706c7d8e12009dab006be20000c031a8','0xe3333700ca9d93003f00f0f71f8515005f6c00aa',
+            '0xa1200000d0002264c9a1698e001292d00e1b00af','0x93070a847efef7f70739046a929d47a521f5b8ee',
+            '0x2957922eb93258b93368531d39facca3b4dc5854','0xebc2459ec962869ca4c0bd1e06368272732bcb08',
+            '0xada100db00ca00073811820692005400218fce1f','0xada2005600dec949baf300f4c6120000bdb6eaab'}
+          CORE|={v.lower() for v in WALLETS.values()}
+          def norm(x): return str(x or '').lower()
+          def get(url,params=None,timeout=40,attempts=5):
+            if params: url+=('&' if '?' in url else '?')+urllib.parse.urlencode(params,doseq=True)
+            last=None
+            for i in range(attempts):
               try:
-                  decimals = int(row.get("tokenDecimal") or 6)
-                  return int(row.get("value") or 0) / (10 ** decimals)
-              except Exception:
-                  return None
-
-          outgoing_by_wallet = defaultdict(list)
-          candidate_by_wallet = defaultdict(lambda: defaultdict(list))
-          exclusions = defaultdict(lambda: defaultdict(int))
-
-          for label, wallet in WALLETS.items():
-              wallet_lower = wallet.lower()
-              for token_name, payload in histories[label].items():
-                  for row in payload["rows"]:
-                      if norm(row.get("from")) != wallet_lower:
-                          continue
-                      compact = {
-                          "token": token_name,
-                          "token_address": norm(row.get("contractAddress")),
-                          "amount": transfer_amount(row),
-                          "amount_raw": str(row.get("value") or "0"),
-                          "from": wallet_lower,
-                          "to": norm(row.get("to")),
-                          "tx_hash": norm(row.get("hash")),
-                          "block_number": int(row.get("blockNumber") or 0),
-                          "timestamp": int(row.get("timeStamp") or 0),
-                          "transaction_index": int(row.get("transactionIndex") or 0),
-                          "function": row.get("functionName"),
-                          "method_id": row.get("methodId"),
-                      }
-                      outgoing_by_wallet[label].append(compact)
-                      types = activity_types[label].get(compact["tx_hash"], set())
-                      function = str(compact.get("function") or "").lower()
-                      if "TRADE" in types:
-                          exclusions[label]["polymarket_trade_activity"] += 1
-                      elif compact["to"] in KNOWN_CORE:
-                          exclusions[label]["known_core_recipient"] += 1
-                      elif "matchorders" in function or "fillorder" in function:
-                          exclusions[label]["exchange_method"] += 1
-                      else:
-                          candidate_by_wallet[label][compact["tx_hash"]].append(compact)
-
-          def v2_all(url, params=None, max_pages=25):
-              items = []
-              query = dict(params or {})
-              errors = []
-              for _ in range(max_pages):
-                  response = request_json(url, query)
-                  data = response.get("data") if isinstance(response, dict) else None
-                  if not isinstance(data, dict):
-                      errors.append(response)
-                      break
-                  page_items = data.get("items") or []
-                  if not isinstance(page_items, list):
-                      errors.append(response)
-                      break
-                  items.extend(page_items)
-                  next_params = data.get("next_page_params") or {}
-                  if not next_params:
-                      break
-                  query = next_params
-              return {"items": items, "errors": errors}
-
-          def address_metadata(address):
-              return request_json(f"{POLYGON}/api/v2/addresses/{address}")
-
-          def bridge_status(address):
-              return request_json(f"{BRIDGE_API}/status/{urllib.parse.quote(address, safe='')}")
-
-          def transaction_trace(tx_hash, origins):
-              detail = request_json(f"{POLYGON}/api/v2/transactions/{tx_hash}")
-              transfers = v2_all(f"{POLYGON}/api/v2/transactions/{tx_hash}/token-transfers")
-              relay = request_json(RELAY_API, {"hash": tx_hash, "limit": 50})
-              recipients = sorted({origin["to"] for origin in origins if origin["to"]})
-              recipient_data = {}
-              for recipient in recipients:
-                  recipient_data[recipient] = {
-                      "metadata": address_metadata(recipient),
-                      "bridge_status": bridge_status(recipient),
-                  }
-              return {
-                  "origins": origins,
-                  "activity_types": sorted(activity_types_by_hash.get(tx_hash, set())),
-                  "detail": detail,
-                  "token_transfers": transfers,
-                  "relay": relay,
-                  "recipients": recipient_data,
-              }
-
-          activity_types_by_hash = defaultdict(set)
-          for label in WALLETS:
-              for tx_hash, types in activity_types[label].items():
-                  activity_types_by_hash[tx_hash] |= types
-
-          traces = defaultdict(dict)
-          trace_jobs = []
-          for label, txs in candidate_by_wallet.items():
-              for tx_hash, origins in txs.items():
-                  trace_jobs.append((label, tx_hash, origins))
-
-          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
-              future_map = {
-                  pool.submit(transaction_trace, tx_hash, origins): (label, tx_hash)
-                  for label, tx_hash, origins in trace_jobs
-              }
-              for future in concurrent.futures.as_completed(future_map):
-                  label, tx_hash = future_map[future]
-                  traces[label][tx_hash] = future.result()
-
-          def bridge_records(trace):
-              records = []
-              for recipient, recipient_payload in trace.get("recipients", {}).items():
-                  response = recipient_payload.get("bridge_status", {})
-                  data = response.get("data") if isinstance(response, dict) else None
-                  transactions = data.get("transactions", []) if isinstance(data, dict) else []
-                  if isinstance(transactions, list) and transactions:
-                      records.append({"deposit_address": recipient, "transactions": transactions})
-              return records
-
-          def collect_addresses(obj, found=None):
-              if found is None:
-                  found = set()
-              if isinstance(obj, dict):
-                  for key, value in obj.items():
-                      key_lower = str(key).lower()
-                      if isinstance(value, str) and value.lower().startswith("0x") and len(value) == 42:
-                          if any(part in key_lower for part in ("recipient", "destination", "receiver", "beneficiary", "to")):
-                              found.add(value.lower())
-                      collect_addresses(value, found)
-              elif isinstance(obj, list):
-                  for value in obj:
-                      collect_addresses(value, found)
-              return found
-
-          summary = {
-              "generated_at": int(time.time()),
-              "wallets": {},
-              "shared_direct_recipients": {},
-              "shared_bridge_endpoints": {},
-              "coverage_errors": [],
-          }
-          direct_sets = defaultdict(set)
-          endpoint_sets = defaultdict(set)
-
-          for label, wallet in WALLETS.items():
-              confirmed = []
-              candidates = []
-              for tx_hash, trace in sorted(traces[label].items()):
-                  records = bridge_records(trace)
-                  for origin in trace["origins"]:
-                      direct_sets[label].add(origin["to"])
-                  for record in records:
-                      endpoint_sets[label] |= collect_addresses(record["transactions"])
-                  row = {
-                      "tx_hash": tx_hash,
-                      "origins": trace["origins"],
-                      "bridge_records": records,
-                      "relay_request_count": len((trace.get("relay", {}).get("data") or {}).get("requests", []))
-                          if isinstance(trace.get("relay", {}).get("data"), dict) else 0,
-                      "transaction_status": (trace.get("detail", {}).get("data") or {}).get("status")
-                          if isinstance(trace.get("detail", {}).get("data"), dict) else None,
-                      "transaction_method": (trace.get("detail", {}).get("data") or {}).get("method")
-                          if isinstance(trace.get("detail", {}).get("data"), dict) else None,
-                  }
-                  candidates.append(row)
-                  if records:
-                      confirmed.append(row)
-
-              summary["wallets"][label] = {
-                  "wallet": wallet,
-                  "activity_rows": len(activities[label]["rows"]),
-                  "activity_errors": activities[label]["errors"],
-                  "token_history_rows": {
-                      token_name: len(histories[label][token_name]["rows"])
-                      for token_name in TOKENS
-                  },
-                  "token_history_errors": {
-                      token_name: histories[label][token_name]["errors"]
-                      for token_name in TOKENS
-                  },
-                  "outgoing_stablecoin_transfers": len(outgoing_by_wallet[label]),
-                  "exclusions": dict(exclusions[label]),
-                  "candidate_transaction_count": len(candidates),
-                  "confirmed_bridge_withdrawal_count": len(confirmed),
-                  "candidate_transactions": candidates,
-                  "confirmed_bridge_withdrawals": confirmed,
-              }
-              summary["coverage_errors"].extend(activities[label]["errors"])
-              for token_name in TOKENS:
-                  summary["coverage_errors"].extend(histories[label][token_name]["errors"])
-
-          labels = sorted(WALLETS)
-          for index, left in enumerate(labels):
-              for right in labels[index + 1:]:
-                  direct = sorted(direct_sets[left] & direct_sets[right])
-                  endpoints = sorted(endpoint_sets[left] & endpoint_sets[right])
-                  if direct:
-                      summary["shared_direct_recipients"][f"{left}|{right}"] = direct
-                  if endpoints:
-                      summary["shared_bridge_endpoints"][f"{left}|{right}"] = endpoints
-
-          full_report = {
-              "summary": summary,
-              "wallets": WALLETS,
-              "tokens": TOKENS,
-              "activities": activities,
-              "histories": histories,
-              "outgoing_by_wallet": outgoing_by_wallet,
-              "candidate_by_wallet": candidate_by_wallet,
-              "traces": traces,
-          }
-          Path("polymarket-withdrawal-trace-fixed.json").write_text(
-              json.dumps(full_report, indent=2, sort_keys=True), encoding="utf-8"
-          )
-          Path("polymarket-withdrawal-summary-fixed.json").write_text(
-              json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
-          )
-          print("WITHDRAWAL_TRACE_FIXED_START")
-          print(json.dumps(summary, indent=2, sort_keys=True))
-          print("WITHDRAWAL_TRACE_FIXED_END")
+                q=urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'pm-trace-fixed/2'})
+                with urllib.request.urlopen(q,timeout=timeout) as r:
+                  return {'ok':True,'status':r.status,'url':r.url,'data':json.loads(r.read())}
+              except urllib.error.HTTPError as e:
+                last={'ok':False,'status':e.code,'url':url,'error':str(e),'raw':e.read().decode(errors='replace')[:2000]}
+                if e.code not in (429,500,502,503,504): return last
+              except Exception as e: last={'ok':False,'url':url,'error':f'{type(e).__name__}: {e}'}
+              time.sleep(.8*(i+1))
+            return last
+          def history(addr,token,max_pages=50):
+            rows=[]; errors=[]
+            for page in range(1,max_pages+1):
+              r=get(CLASSIC,{'module':'account','action':'tokentx','address':addr,'contractaddress':token,'startblock':0,'endblock':999999999,'sort':'asc','page':page,'offset':10000})
+              d=r.get('data') if isinstance(r,dict) else None; rr=d.get('result',[]) if isinstance(d,dict) else []
+              if not isinstance(rr,list): errors.append(r); break
+              rows+=rr
+              if len(rr)<10000: break
+            return {'rows':rows,'errors':errors}
+          def activity(addr,max_pages=100):
+            rows=[]; errors=[]
+            for p in range(max_pages):
+              r=get(DATA+'/activity',{'user':addr,'limit':500,'offset':p*500}); d=r.get('data') if isinstance(r,dict) else None
+              if not isinstance(d,list): errors.append(r); break
+              rows+=d
+              if len(d)<500: break
+            return {'rows':rows,'errors':errors}
+          hist=defaultdict(dict); acts={}
+          jobs=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+            for label,w in WALLETS.items():
+              for tn,ta in TOKENS.items(): jobs.append((ex.submit(history,w,ta),'h',label,tn))
+              jobs.append((ex.submit(activity,w),'a',label,None))
+            for f,k,l,t in jobs:
+              x=f.result(); hist[l][t]=x if k=='h' else hist[l].get(t)
+              if k=='a': acts[l]=x
+          atypes=defaultdict(lambda:defaultdict(set))
+          for l,p in acts.items():
+            for a in p['rows']:
+              h=norm(a.get('transactionHash'))
+              if h: atypes[l][h].add(str(a.get('type') or '').upper())
+          def amt(r):
+            try:return int(r.get('value') or 0)/10**int(r.get('tokenDecimal') or 6)
+            except:return None
+          candidates=defaultdict(lambda:defaultdict(list)); outgoing=defaultdict(list); excluded=defaultdict(lambda:defaultdict(int))
+          for l,w in WALLETS.items():
+            for tn,p in hist[l].items():
+              if not isinstance(p,dict): continue
+              for r in p['rows']:
+                if norm(r.get('from'))!=w.lower(): continue
+                x={'token':tn,'amount':amt(r),'to':norm(r.get('to')),'tx_hash':norm(r.get('hash')),'timestamp':int(r.get('timeStamp') or 0),'block':int(r.get('blockNumber') or 0),'function':r.get('functionName')}
+                outgoing[l].append(x); types=atypes[l].get(x['tx_hash'],set()); fn=str(x['function'] or '').lower()
+                if 'TRADE' in types: excluded[l]['trade_activity']+=1
+                elif x['to'] in CORE: excluded[l]['known_core']+=1
+                elif 'matchorders' in fn or 'fillorder' in fn: excluded[l]['exchange_method']+=1
+                else: candidates[l][x['tx_hash']].append(x)
+          def trace(l,h,origins):
+            recips=sorted({x['to'] for x in origins}); rd={}
+            for a in recips:
+              rd[a]={'meta':get(POLYGON+'/api/v2/addresses/'+a),'bridge':get(BRIDGE+'/status/'+a)}
+            return l,h,{'origins':origins,'detail':get(POLYGON+'/api/v2/transactions/'+h),'relay':get(RELAY,{'hash':h,'limit':50}),'recipients':rd}
+          traces=defaultdict(dict); work=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+            for l,txs in candidates.items():
+              for h,origins in txs.items(): work.append(ex.submit(trace,l,h,origins))
+            for f in concurrent.futures.as_completed(work):
+              l,h,x=f.result(); traces[l][h]=x
+          direct=defaultdict(set); endpoints=defaultdict(set)
+          def addresses(obj,out=None):
+            if out is None: out=set()
+            if isinstance(obj,dict):
+              for k,v in obj.items():
+                kl=str(k).lower()
+                if isinstance(v,str) and v.startswith('0x') and len(v)==42 and any(z in kl for z in ('recipient','destination','receiver','beneficiary','to')): out.add(v.lower())
+                addresses(v,out)
+            elif isinstance(obj,list):
+              for v in obj: addresses(v,out)
+            return out
+          summary={'generated_at':int(time.time()),'wallets':{},'shared_direct_recipients':{},'shared_bridge_endpoints':{},'coverage_errors':[]}
+          for l,w in WALLETS.items():
+            cand=[]; confirmed=[]
+            for h,x in sorted(traces[l].items()):
+              br=[]
+              for r,p in x['recipients'].items():
+                d=p['bridge'].get('data') if isinstance(p['bridge'],dict) else None; txs=d.get('transactions',[]) if isinstance(d,dict) else []
+                direct[l].add(r)
+                if isinstance(txs,list) and txs:
+                  br.append({'deposit_address':r,'transactions':txs}); endpoints[l]|=addresses(txs)
+              relaydata=x['relay'].get('data') if isinstance(x['relay'],dict) else None
+              row={'tx_hash':h,'origins':x['origins'],'bridge_records':br,'relay_request_count':len(relaydata.get('requests',[])) if isinstance(relaydata,dict) else 0}
+              cand.append(row)
+              if br: confirmed.append(row)
+            summary['wallets'][l]={'wallet':w,'activity_rows':len(acts[l]['rows']),'token_history_rows':{t:len(hist[l][t]['rows']) for t in TOKENS},'outgoing_stablecoin_transfers':len(outgoing[l]),'exclusions':dict(excluded[l]),'candidate_transaction_count':len(cand),'confirmed_bridge_withdrawal_count':len(confirmed),'candidate_transactions':cand,'confirmed_bridge_withdrawals':confirmed}
+            summary['coverage_errors']+=acts[l]['errors']
+            for t in TOKENS: summary['coverage_errors']+=hist[l][t]['errors']
+          labs=sorted(WALLETS)
+          for i,a in enumerate(labs):
+            for b in labs[i+1:]:
+              x=sorted(direct[a]&direct[b]); y=sorted(endpoints[a]&endpoints[b])
+              if x: summary['shared_direct_recipients'][a+'|'+b]=x
+              if y: summary['shared_bridge_endpoints'][a+'|'+b]=y
+          Path('polymarket-withdrawal-summary-fixed.json').write_text(json.dumps(summary,indent=2,sort_keys=True))
+          Path('polymarket-withdrawal-trace-fixed.json').write_text(json.dumps({'summary':summary,'traces':traces,'activities':acts,'histories':hist},indent=2,sort_keys=True))
+          print('WITHDRAWAL_TRACE_FIXED_START'); print(json.dumps(summary,indent=2,sort_keys=True)); print('WITHDRAWAL_TRACE_FIXED_END')
           PY
       - name: Upload completed trace
         uses: actions/upload-artifact@v4
