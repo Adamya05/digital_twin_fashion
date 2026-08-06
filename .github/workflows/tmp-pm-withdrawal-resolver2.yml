@@ -1,0 +1,82 @@
+name: Temporary Polymarket withdrawal resolver 2
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve withdrawals
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.parse,urllib.request
+          from pathlib import Path
+          W={'main':'0x565ca59275f81991bd9877d7fa8404c5ecf6519e','alt1':'0x75973c667cec880353450be3a6f17c5da67b4421','alt2':'0xa01c0a5e4f8c1114e95c68ee97694bc95e51766c'}
+          PM='https://data-api.polymarket.com/activity'; BS='https://polygon.blockscout.com/api/v2'; BR='https://bridge.polymarket.com/status/'; REL='https://api.relay.link/requests/v2'
+          def get(url,p=None):
+            if p:url+=('?' if '?' not in url else '&')+urllib.parse.urlencode(p)
+            last=None
+            for i in range(5):
+              try:
+                q=urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'pm-resolver/2.0'})
+                with urllib.request.urlopen(q,timeout=45) as r:return {'ok':True,'status':r.status,'url':r.url,'data':json.loads(r.read())}
+              except Exception as e:last={'ok':False,'url':url,'error':f'{type(e).__name__}: {e}'};time.sleep(i+1)
+            return last
+          def activity(a):
+            z=[];e=[]
+            for o in range(0,50000,500):
+              r=get(PM,{'user':a,'limit':500,'offset':o});d=r.get('data') if isinstance(r,dict) else None
+              if not isinstance(d,list):e.append(r);break
+              z+=d
+              if len(d)<500:break
+            return z,e
+          def transfers(h):
+            r=get(f'{BS}/transactions/{h}/token-transfers');d=r.get('data') if isinstance(r,dict) else None
+            return d.get('items',[]) if isinstance(d,dict) else []
+          out={'generated_at':int(time.time()),'wallets':{},'shared':{}};sets={}
+          for l,a in W.items():
+            rows,errs=activity(a);types={}
+            for x in rows:types[str(x.get('type') or '')]=types.get(str(x.get('type') or ''),0)+1
+            ws=[x for x in rows if str(x.get('type') or '').upper()=='WITHDRAWAL']; rr=[]; ds=set()
+            for x in ws:
+              h=str(x.get('transactionHash') or '').lower();ts=transfers(h) if h else []
+              rec=set()
+              for t in ts:
+                f=t.get('from') or {};q=t.get('to') or {};fa=str(f.get('hash') if isinstance(f,dict) else f or '').lower();qa=str(q.get('hash') if isinstance(q,dict) else q or '').lower()
+                if fa==a.lower() and qa:rec.add(qa)
+              bridges={}
+              for c in rec:
+                bridges[c]=get(BR+urllib.parse.quote(c,safe=''));bd=bridges[c].get('data') if isinstance(bridges[c],dict) else None
+                if isinstance(bd,dict):
+                  for bt in bd.get('transactions') or []:
+                    for k,v in bt.items():
+                      if isinstance(v,str) and v.lower().startswith('0x') and len(v)==42 and any(s in k.lower() for s in ['recipient','destination','receiver','beneficiary','to']):ds.add(v.lower())
+              rr.append({'activity':x,'tx_hash':h,'detail':get(f'{BS}/transactions/{h}') if h else None,'transfers':ts,'relay':get(REL,{'hash':h,'limit':50}) if h else None,'candidate_recipients':sorted(rec),'bridge_status':bridges})
+            sets[l]=ds;out['wallets'][l]={'address':a,'activity_rows':len(rows),'activity_errors':errs,'type_counts':types,'withdrawal_count':len(ws),'withdrawals':rr,'bridge_destination_addresses':sorted(ds)}
+          ls=sorted(W)
+          for i,a in enumerate(ls):
+            for b in ls[i+1:]:
+              c=sorted(sets[a]&sets[b])
+              if c:out['shared'][f'{a}|{b}']=c
+          Path('/tmp/pm-withdrawal-resolved.json').write_text(json.dumps(out,indent=2,sort_keys=True))
+          print(json.dumps({'wallets':{k:{'activity_rows':v['activity_rows'],'type_counts':v['type_counts'],'withdrawal_count':v['withdrawal_count'],'bridge_destination_addresses':v['bridge_destination_addresses']} for k,v in out['wallets'].items()},'shared':out['shared']},indent=2))
+          PY
+      - name: Publish result
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch --orphan tmp/pm-withdrawal-resolved2-20260806
+          git rm -rf .
+          cp /tmp/pm-withdrawal-resolved.json .
+          git add pm-withdrawal-resolved.json
+          git commit -m 'Record temporary withdrawal resolution'
+          git push --force origin HEAD:refs/heads/tmp/pm-withdrawal-resolved2-20260806
