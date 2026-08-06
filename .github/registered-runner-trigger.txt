@@ -1,0 +1,1 @@
+Trigger registered workflow after base registration.
