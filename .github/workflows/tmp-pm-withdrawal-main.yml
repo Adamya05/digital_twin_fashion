@@ -1,0 +1,306 @@
+# Temporary read-only research workflow. This commit will be removed after the trace.
+name: Temporary Polymarket withdrawal trace
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-pm-withdrawal-main.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace non-trade pUSD outflows
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures
+          import json
+          import re
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from collections import defaultdict
+          from pathlib import Path
+
+          WALLETS = {
+              "main": {"address": "0x565ca59275f81991bd9877d7fa8404c5ecf6519e", "start": 88300000},
+              "alt1": {"address": "0x75973c667cec880353450be3a6f17c5da67b4421", "start": 90350000},
+              "alt2": {"address": "0xa01c0a5e4f8c1114e95c68ee97694bc95e51766c", "start": 89400000},
+          }
+          PUSD = "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb"
+          BLOCKSCOUT = "https://polygon.blockscout.com"
+          CLASSIC = BLOCKSCOUT + "/api"
+          CORE = {
+              "0xe111180000d2663c0091e4f400237545b87b996b",
+              "0xe2222d279d744050d28e00520010520000310f59",
+              "0x4d97dcd97ec945f40cf65f87097ace5ea0476045",
+              "0x006f54f7f9a22e0000cc2ab60031000000ae9fef",
+              "0x1000008dd9001b968442c1000017eae6e0da00ba",
+              "0x200000900045e3b6259600682756002200028933",
+              "0x30000034706c7d8e12009dab006be20000c031a8",
+              "0xe3333700ca9d93003f00f0f71f8515005f6c00aa",
+              "0xa1200000d0002264c9a1698e001292d00e1b00af",
+              "0x93070a847efef7f70739046a929d47a521f5b8ee",
+              "0x2957922eb93258b93368531d39facca3b4dc5854",
+              "0xebc2459ec962869ca4c0bd1e06368272732bcb08",
+              "0xada100db00ca00073811820692005400218fce1f",
+              "0xada2005600dec949baf300f4c6120000bdb6eaab",
+              "0x0000000000000000000000000000000000000000",
+          } | {spec["address"].lower() for spec in WALLETS.values()}
+          ADDRESS_RE = re.compile(r"0x[a-fA-F0-9]{40}")
+
+          def request_json(url, params=None, method="GET", body=None, timeout=35, attempts=5):
+              if params:
+                  url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+              payload = json.dumps(body).encode() if body is not None else None
+              headers = {"Accept": "application/json", "User-Agent": "pm-withdrawal-trace/4.0"}
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+              last = None
+              for attempt in range(attempts):
+                  try:
+                      req = urllib.request.Request(url, data=payload, method=method, headers=headers)
+                      with urllib.request.urlopen(req, timeout=timeout) as response:
+                          raw = response.read()
+                          try:
+                              data = json.loads(raw)
+                          except Exception:
+                              data = None
+                          return {"ok": True, "status": response.status, "url": response.url,
+                                  "data": data, "raw": None if data is not None else raw.decode(errors="replace")[:4000]}
+                  except urllib.error.HTTPError as exc:
+                      raw = exc.read().decode(errors="replace")
+                      last = {"ok": False, "status": exc.code, "url": url,
+                              "error": f"HTTPError: {exc}", "raw": raw[:4000]}
+                      if exc.code not in (429, 500, 502, 503, 504):
+                          return last
+                  except Exception as exc:
+                      last = {"ok": False, "url": url, "error": f"{type(exc).__name__}: {exc}"}
+                  time.sleep(0.8 * (attempt + 1))
+              return last
+
+          rpc = request_json("https://polygon.drpc.org", method="POST", body={
+              "jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []
+          })
+          try:
+              TIP = int(rpc["data"]["result"], 16)
+          except Exception:
+              TIP = 92000000
+
+          def fetch_window(label, address, start, end):
+              response = request_json(CLASSIC, {
+                  "module": "account", "action": "tokentx", "address": address,
+                  "contractaddress": PUSD, "startblock": start, "endblock": end,
+                  "sort": "asc", "page": 1, "offset": 10000,
+              }, timeout=45)
+              data = response.get("data")
+              rows = data.get("result", []) if isinstance(data, dict) else []
+              if not isinstance(rows, list):
+                  rows = []
+              return label, start, end, rows, response
+
+          jobs = []
+          WINDOW = 40000
+          for label, spec in WALLETS.items():
+              start = spec["start"]
+              while start <= TIP:
+                  jobs.append((label, spec["address"], start, min(start + WINDOW - 1, TIP)))
+                  start += WINDOW
+
+          rows_by_wallet = defaultdict(list)
+          errors = []
+          capped = []
+          with concurrent.futures.ThreadPoolExecutor(max_workers=14) as pool:
+              futures = [pool.submit(fetch_window, *job) for job in jobs]
+              for future in concurrent.futures.as_completed(futures):
+                  label, start, end, rows, response = future.result()
+                  rows_by_wallet[label].extend(rows)
+                  if not response.get("ok"):
+                      errors.append({"label": label, "start": start, "end": end, "response": response})
+                  if len(rows) >= 10000:
+                      capped.append({"label": label, "start": start, "end": end, "count": len(rows)})
+
+          # De-duplicate exact events.
+          for label, rows in rows_by_wallet.items():
+              unique = {}
+              for row in rows:
+                  key = (row.get("hash"), row.get("transactionIndex"), row.get("contractAddress"),
+                         row.get("from"), row.get("to"), row.get("value"))
+                  unique[key] = row
+              rows_by_wallet[label] = sorted(unique.values(), key=lambda r: (
+                  int(r.get("blockNumber") or 0), int(r.get("transactionIndex") or 0)))
+
+          def amount(row):
+              try:
+                  return int(row.get("value", "0")) / 10 ** int(row.get("tokenDecimal", "6"))
+              except Exception:
+                  return None
+
+          def compact(row):
+              return {
+                  "block": row.get("blockNumber"), "timestamp": row.get("timeStamp"),
+                  "hash": row.get("hash"), "from": row.get("from"), "to": row.get("to"),
+                  "token": row.get("tokenSymbol"), "amount": amount(row),
+                  "function": row.get("functionName"), "method_id": row.get("methodId"),
+                  "gas_price": row.get("gasPrice"),
+              }
+
+          candidates = defaultdict(lambda: defaultdict(list))
+          excluded = defaultdict(lambda: defaultdict(int))
+          for label, rows in rows_by_wallet.items():
+              wallet = WALLETS[label]["address"].lower()
+              for row in rows:
+                  if str(row.get("from") or "").lower() != wallet:
+                      excluded[label]["incoming_or_unrelated"] += 1
+                      continue
+                  recipient = str(row.get("to") or "").lower()
+                  function = str(row.get("functionName") or "").lower()
+                  if recipient in CORE:
+                      excluded[label]["known_polymarket_core"] += 1
+                  elif "matchorders" in function or "fillorder" in function:
+                      excluded[label]["trade_settlement"] += 1
+                  else:
+                      candidates[label][recipient].append(row)
+
+          candidate_addresses = sorted({address for mapping in candidates.values() for address in mapping})
+
+          def first_page(action, address, offset=1000):
+              return request_json(CLASSIC, {
+                  "module": "account", "action": action, "address": address,
+                  "startblock": 0, "endblock": 999999999, "sort": "asc",
+                  "page": 1, "offset": offset,
+              })
+
+          def trace_candidate(address):
+              bridge = request_json(f"https://bridge.polymarket.com/status/{urllib.parse.quote(address, safe='')}")
+              metadata = request_json(f"{BLOCKSCOUT}/api/v2/addresses/{address}")
+              token_transfers = first_page("tokentx", address, 3000)
+              normal_txs = first_page("txlist", address, 1000)
+              return address, {
+                  "bridge": bridge,
+                  "metadata": metadata,
+                  "token_transfers": token_transfers,
+                  "normal_transactions": normal_txs,
+              }
+
+          traces = {}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as pool:
+              futures = [pool.submit(trace_candidate, address) for address in candidate_addresses]
+              for future in concurrent.futures.as_completed(futures):
+                  address, result = future.result()
+                  traces[address] = result
+
+          source_hashes = sorted({row.get("hash") for mapping in candidates.values()
+                                  for rows in mapping.values() for row in rows if row.get("hash")})
+          source_details = {}
+          relay = {}
+          def trace_hash(tx_hash):
+              return tx_hash, {
+                  "polygon_transaction": request_json(f"{BLOCKSCOUT}/api/v2/transactions/{tx_hash}"),
+                  "polygon_token_transfers": request_json(f"{BLOCKSCOUT}/api/v2/transactions/{tx_hash}/token-transfers"),
+                  "relay": request_json("https://api.relay.link/requests/v2", {"hash": tx_hash, "limit": 50}),
+              }
+          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as pool:
+              futures = [pool.submit(trace_hash, tx_hash) for tx_hash in source_hashes]
+              for future in concurrent.futures.as_completed(futures):
+                  tx_hash, result = future.result()
+                  source_details[tx_hash] = result
+
+          summary = {
+              "tip": TIP, "rpc": rpc, "errors": errors, "capped_windows": capped,
+              "direct_recipient_overlap": {}, "bridge_identity_overlap": {}, "wallets": {},
+          }
+          identity_fields = defaultdict(set)
+
+          def collect_identities(label, obj):
+              if isinstance(obj, dict):
+                  for key, value in obj.items():
+                      lowered = key.lower()
+                      if isinstance(value, str):
+                          for match in ADDRESS_RE.findall(value):
+                              identity_fields[label].add(match.lower())
+                          if ("recipient" in lowered or "destination" in lowered or
+                              lowered in {"receiver", "beneficiary", "toaddress", "to_address"}):
+                              identity_fields[label].add(value.lower())
+                      collect_identities(label, value)
+              elif isinstance(obj, list):
+                  for value in obj:
+                      collect_identities(label, value)
+
+          for label, spec in WALLETS.items():
+              wallet_summary = {
+                  "wallet": spec["address"], "pUSD_transfer_rows": len(rows_by_wallet[label]),
+                  "excluded": dict(excluded[label]), "candidates": {},
+              }
+              for address, rows in sorted(candidates[label].items()):
+                  trace = traces[address]
+                  bridge_data = trace.get("bridge", {}).get("data")
+                  bridge_records = bridge_data.get("transactions", []) if isinstance(bridge_data, dict) else []
+                  collect_identities(label, bridge_records)
+                  token_data = trace.get("token_transfers", {}).get("data")
+                  downstream = token_data.get("result", []) if isinstance(token_data, dict) else []
+                  if not isinstance(downstream, list):
+                      downstream = []
+                  outgoing_downstream = [row for row in downstream
+                                         if str(row.get("from") or "").lower() == address]
+                  wallet_summary["candidates"][address] = {
+                      "count": len(rows), "total_pusd": sum(amount(row) or 0 for row in rows),
+                      "source_transfers": [compact(row) for row in rows],
+                      "bridge_ok": trace.get("bridge", {}).get("ok"),
+                      "bridge_transactions": bridge_records,
+                      "recipient_metadata": trace.get("metadata", {}).get("data"),
+                      "outgoing_downstream_count": len(outgoing_downstream),
+                      "outgoing_downstream_sample": [compact(row) for row in outgoing_downstream[:100]],
+                      "normal_transactions": trace.get("normal_transactions", {}).get("data"),
+                      "source_transaction_details": {
+                          row.get("hash"): source_details.get(row.get("hash")) for row in rows
+                      },
+                  }
+              summary["wallets"][label] = wallet_summary
+
+          labels = sorted(WALLETS)
+          for index, left in enumerate(labels):
+              for right in labels[index + 1:]:
+                  shared_direct = sorted(set(candidates[left]) & set(candidates[right]))
+                  if shared_direct:
+                      summary["direct_recipient_overlap"][f"{left}|{right}"] = shared_direct
+                  shared_ids = sorted(identity_fields[left] & identity_fields[right])
+                  if shared_ids:
+                      summary["bridge_identity_overlap"][f"{left}|{right}"] = shared_ids
+
+          full = {
+              "generated_at": int(time.time()),
+              "wallets": WALLETS,
+              "rows_by_wallet": rows_by_wallet,
+              "traces": traces,
+              "source_details": source_details,
+              "summary": summary,
+          }
+          result_path = Path("/tmp/polymarket-withdrawal-trace.json")
+          result_path.write_text(json.dumps(full, indent=2, sort_keys=True), encoding="utf-8")
+          Path("/tmp/polymarket-withdrawal-summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+          print("WITHDRAWAL_TRACE_START")
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          print("WITHDRAWAL_TRACE_END")
+          PY
+      - name: Publish result to disposable branch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch --orphan tmp/pm-withdrawal-result-20260806
+          git rm -rf .
+          cp /tmp/polymarket-withdrawal-trace.json .
+          cp /tmp/polymarket-withdrawal-summary.json .
+          git add polymarket-withdrawal-trace.json polymarket-withdrawal-summary.json
+          git commit -m 'Record temporary Polymarket withdrawal trace'
+          git push --force origin HEAD:refs/heads/tmp/pm-withdrawal-result-20260806
