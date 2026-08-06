@@ -1,0 +1,36 @@
+# Temporary launcher. Do not merge.
+name: Temporary Polymarket withdrawal launcher
+
+on:
+  push:
+    branches: [tmp/polymarket-withdrawal-trace-20260806]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute embedded trace
+        shell: bash
+        run: |
+          python3 - <<'EXTRACT'
+          from pathlib import Path
+          source = Path('.github/workflows/tmp-polymarket-withdrawal-trace.yml').read_text()
+          marker = "          python3 - <<'PY'\n"
+          start = source.index(marker) + len(marker)
+          end = source.index("\n          PY\n", start)
+          block = source[start:end]
+          script = "\n".join(line[10:] if line.startswith("          ") else line for line in block.splitlines())
+          exec(compile(script, 'polymarket-withdrawal-trace.py', 'exec'), {'__name__': '__main__'})
+          EXTRACT
+      - name: Upload trace
+        uses: actions/upload-artifact@v4
+        with:
+          name: polymarket-withdrawal-trace
+          path: polymarket-withdrawal-trace.json
+          retention-days: 3
